@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.tools-img/node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+credentials.json
+*.pem
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs and caches
+*.log
+.npm
+.cache/
+dist/
+build/

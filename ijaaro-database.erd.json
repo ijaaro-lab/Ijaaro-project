@@ -1,0 +1,3111 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": 0,
+    "originY": 0,
+    "zoomLevel": 0.45,
+    "show": 511,
+    "database": 16,
+    "databaseName": "ijaaro",
+    "canvasType": "ERD",
+    "language": 16,
+    "tableNameCase": 8,
+    "columnNameCase": 8,
+    "bracketType": 2,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": 120,
+    "lockSettings": 0
+  },
+  "doc": {
+    "tableIds": [
+      "profiles",
+      "tenants",
+      "tenant_memberships",
+      "properties",
+      "property_photos",
+      "rental_assignments",
+      "rent_charges",
+      "rent_payments",
+      "maintenance_requests",
+      "utility_accounts",
+      "meters",
+      "meter_readings",
+      "utility_bills",
+      "utility_payments",
+      "notifications",
+      "audit_logs"
+    ],
+    "relationshipIds": [
+      "rel_tm_tenant",
+      "rel_tm_user",
+      "rel_tm_invited",
+      "rel_prop_tenant",
+      "rel_prop_owner",
+      "rel_prop_renter",
+      "rel_photo_prop",
+      "rel_ra_prop",
+      "rel_ra_tenant",
+      "rel_ra_landlord",
+      "rel_ra_renter",
+      "rel_rc_assign",
+      "rel_rp_charge",
+      "rel_rp_payer",
+      "rel_ua_tenant",
+      "rel_ua_prop",
+      "rel_ua_cust",
+      "rel_meter_ua",
+      "rel_mr_meter",
+      "rel_mr_corr",
+      "rel_ub_ua",
+      "rel_ub_resp",
+      "rel_up_bill",
+      "rel_maint_prop",
+      "rel_maint_renter",
+      "rel_notif_recip",
+      "rel_audit_actor"
+    ],
+    "indexIds": [
+      "idx_tm_tenant_user",
+      "idx_ua_acct",
+      "idx_meter_num",
+      "idx_rp_provider",
+      "idx_up_provider"
+    ],
+    "memoIds": [
+      "memo_flow",
+      "memo_roles_landlord",
+      "memo_roles_utility"
+    ],
+    "tableGroupIds": [
+      "grp_platform",
+      "grp_provision",
+      "grp_landlord",
+      "grp_utility",
+      "grp_cross"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "profiles": {
+        "id": "profiles",
+        "name": "profiles",
+        "comment": "Auth profile = auth.users.id",
+        "columnIds": [
+          "profiles__id",
+          "profiles__full_name",
+          "profiles__phone",
+          "profiles__email",
+          "profiles__avatar_url",
+          "profiles__preferred_language",
+          "profiles__created_at",
+          "profiles__updated_at"
+        ],
+        "groupId": "grp_platform",
+        "ui": {
+          "x": 80,
+          "y": 120,
+          "color": "#2563eb"
+        }
+      },
+      "tenants": {
+        "id": "tenants",
+        "name": "tenants",
+        "comment": "Workspace: platform | landlord | water | electricity",
+        "columnIds": [
+          "tenants__id",
+          "tenants__name",
+          "tenants__slug",
+          "tenants__tenant_type",
+          "tenants__status",
+          "tenants__branding",
+          "tenants__settings",
+          "tenants__created_at",
+          "tenants__updated_at"
+        ],
+        "groupId": "grp_provision",
+        "ui": {
+          "x": 1340,
+          "y": 120,
+          "color": "#7c3aed"
+        }
+      },
+      "tenant_memberships": {
+        "id": "tenant_memberships",
+        "name": "tenant_memberships",
+        "comment": "User ↔ Tenant ↔ Role (RBAC)",
+        "columnIds": [
+          "tenant_memberships__id",
+          "tenant_memberships__tenant_id",
+          "tenant_memberships__user_id",
+          "tenant_memberships__role",
+          "tenant_memberships__status",
+          "tenant_memberships__permissions",
+          "tenant_memberships__invited_by",
+          "tenant_memberships__created_at",
+          "tenant_memberships__updated_at"
+        ],
+        "groupId": "grp_provision",
+        "ui": {
+          "x": 1700,
+          "y": 120,
+          "color": "#db2777"
+        }
+      },
+      "properties": {
+        "id": "properties",
+        "name": "properties",
+        "comment": "Canonical premises (no duplicates)",
+        "columnIds": [
+          "properties__id",
+          "properties__tenant_id",
+          "properties__owner_id",
+          "properties__current_renter_id",
+          "properties__name",
+          "properties__address_line",
+          "properties__district",
+          "properties__city",
+          "properties__property_type",
+          "properties__description",
+          "properties__rent_amount",
+          "properties__currency",
+          "properties__status",
+          "properties__contact_phone",
+          "properties__contact_email",
+          "properties__created_by_tenant_id",
+          "properties__created_source",
+          "properties__is_listed",
+          "properties__created_at",
+          "properties__updated_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 80,
+          "y": 720,
+          "color": "#059669"
+        }
+      },
+      "property_photos": {
+        "id": "property_photos",
+        "name": "property_photos",
+        "comment": "Listing photos (private storage)",
+        "columnIds": [
+          "property_photos__id",
+          "property_photos__property_id",
+          "property_photos__tenant_id",
+          "property_photos__storage_path",
+          "property_photos__sort_order",
+          "property_photos__created_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 480,
+          "y": 720,
+          "color": "#10b981"
+        }
+      },
+      "rental_assignments": {
+        "id": "rental_assignments",
+        "name": "rental_assignments",
+        "comment": "Tenancy history; 1 ACTIVE / property",
+        "columnIds": [
+          "rental_assignments__id",
+          "rental_assignments__tenant_id",
+          "rental_assignments__property_id",
+          "rental_assignments__landlord_id",
+          "rental_assignments__renter_id",
+          "rental_assignments__rent_amount",
+          "rental_assignments__currency",
+          "rental_assignments__due_day",
+          "rental_assignments__start_date",
+          "rental_assignments__end_date",
+          "rental_assignments__status",
+          "rental_assignments__notes",
+          "rental_assignments__created_at",
+          "rental_assignments__updated_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 800,
+          "y": 720,
+          "color": "#0d9488"
+        }
+      },
+      "rent_charges": {
+        "id": "rent_charges",
+        "name": "rent_charges",
+        "comment": "Period rent ledger",
+        "columnIds": [
+          "rent_charges__id",
+          "rent_charges__tenant_id",
+          "rent_charges__assignment_id",
+          "rent_charges__property_id",
+          "rent_charges__renter_id",
+          "rent_charges__period_start",
+          "rent_charges__period_end",
+          "rent_charges__due_date",
+          "rent_charges__amount_due",
+          "rent_charges__amount_paid",
+          "rent_charges__balance",
+          "rent_charges__status",
+          "rent_charges__created_at",
+          "rent_charges__updated_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 1200,
+          "y": 720,
+          "color": "#0891b2"
+        }
+      },
+      "rent_payments": {
+        "id": "rent_payments",
+        "name": "rent_payments",
+        "comment": "Manual/API; landlord approves manual",
+        "columnIds": [
+          "rent_payments__id",
+          "rent_payments__tenant_id",
+          "rent_payments__rent_charge_id",
+          "rent_payments__property_id",
+          "rent_payments__assignment_id",
+          "rent_payments__payer_id",
+          "rent_payments__amount",
+          "rent_payments__currency",
+          "rent_payments__method",
+          "rent_payments__reference",
+          "rent_payments__provider",
+          "rent_payments__provider_transaction_id",
+          "rent_payments__idempotency_key",
+          "rent_payments__proof_path",
+          "rent_payments__status",
+          "rent_payments__submitted_at",
+          "rent_payments__reviewed_by",
+          "rent_payments__reviewed_at",
+          "rent_payments__rejection_reason",
+          "rent_payments__created_at",
+          "rent_payments__updated_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 1580,
+          "y": 720,
+          "color": "#0284c7"
+        }
+      },
+      "maintenance_requests": {
+        "id": "maintenance_requests",
+        "name": "maintenance_requests",
+        "comment": "Renter creates; landlord updates status",
+        "columnIds": [
+          "maintenance_requests__id",
+          "maintenance_requests__tenant_id",
+          "maintenance_requests__property_id",
+          "maintenance_requests__renter_id",
+          "maintenance_requests__category",
+          "maintenance_requests__urgency",
+          "maintenance_requests__description",
+          "maintenance_requests__photo_path",
+          "maintenance_requests__status",
+          "maintenance_requests__created_at",
+          "maintenance_requests__updated_at"
+        ],
+        "groupId": "grp_landlord",
+        "ui": {
+          "x": 1580,
+          "y": 1120,
+          "color": "#65a30d"
+        }
+      },
+      "utility_accounts": {
+        "id": "utility_accounts",
+        "name": "utility_accounts",
+        "comment": "Links company tenant → property (no duplicate property)",
+        "columnIds": [
+          "utility_accounts__id",
+          "utility_accounts__tenant_id",
+          "utility_accounts__property_id",
+          "utility_accounts__service_type",
+          "utility_accounts__account_number",
+          "utility_accounts__customer_id",
+          "utility_accounts__status",
+          "utility_accounts__effective_from",
+          "utility_accounts__effective_to",
+          "utility_accounts__unit_price",
+          "utility_accounts__extra_charges_config",
+          "utility_accounts__created_at",
+          "utility_accounts__updated_at"
+        ],
+        "groupId": "grp_utility",
+        "ui": {
+          "x": 80,
+          "y": 1580,
+          "color": "#ea580c"
+        }
+      },
+      "meters": {
+        "id": "meters",
+        "name": "meters",
+        "comment": "Meters on an account",
+        "columnIds": [
+          "meters__id",
+          "meters__tenant_id",
+          "meters__utility_account_id",
+          "meters__meter_number",
+          "meters__service_type",
+          "meters__status",
+          "meters__installed_at",
+          "meters__replaced_at",
+          "meters__created_at",
+          "meters__updated_at"
+        ],
+        "groupId": "grp_utility",
+        "ui": {
+          "x": 520,
+          "y": 1580,
+          "color": "#f97316"
+        }
+      },
+      "meter_readings": {
+        "id": "meter_readings",
+        "name": "meter_readings",
+        "comment": "Readings + correction chain",
+        "columnIds": [
+          "meter_readings__id",
+          "meter_readings__tenant_id",
+          "meter_readings__meter_id",
+          "meter_readings__utility_account_id",
+          "meter_readings__reading_value",
+          "meter_readings__previous_reading_value",
+          "meter_readings__reading_date",
+          "meter_readings__units_consumed",
+          "meter_readings__status",
+          "meter_readings__recorded_by",
+          "meter_readings__correction_of_id",
+          "meter_readings__correction_reason",
+          "meter_readings__notes",
+          "meter_readings__created_at",
+          "meter_readings__updated_at"
+        ],
+        "groupId": "grp_utility",
+        "ui": {
+          "x": 900,
+          "y": 1580,
+          "color": "#fb923c"
+        }
+      },
+      "utility_bills": {
+        "id": "utility_bills",
+        "name": "utility_bills",
+        "comment": "IMMUTABLE responsible_party snapshot",
+        "columnIds": [
+          "utility_bills__id",
+          "utility_bills__tenant_id",
+          "utility_bills__utility_account_id",
+          "utility_bills__property_id",
+          "utility_bills__meter_reading_id",
+          "utility_bills__service_type",
+          "utility_bills__period_start",
+          "utility_bills__period_end",
+          "utility_bills__previous_reading",
+          "utility_bills__current_reading",
+          "utility_bills__units_consumed",
+          "utility_bills__unit_price",
+          "utility_bills__extra_charges",
+          "utility_bills__total_amount",
+          "utility_bills__amount_paid",
+          "utility_bills__balance",
+          "utility_bills__due_date",
+          "utility_bills__status",
+          "utility_bills__responsible_party_id",
+          "utility_bills__responsible_party_role",
+          "utility_bills__occupancy_snapshot",
+          "utility_bills__created_at",
+          "utility_bills__updated_at"
+        ],
+        "groupId": "grp_utility",
+        "ui": {
+          "x": 1340,
+          "y": 1580,
+          "color": "#c2410c"
+        }
+      },
+      "utility_payments": {
+        "id": "utility_payments",
+        "name": "utility_payments",
+        "comment": "Company approves manual (same tenant only)",
+        "columnIds": [
+          "utility_payments__id",
+          "utility_payments__tenant_id",
+          "utility_payments__utility_bill_id",
+          "utility_payments__utility_account_id",
+          "utility_payments__payer_id",
+          "utility_payments__amount",
+          "utility_payments__currency",
+          "utility_payments__method",
+          "utility_payments__reference",
+          "utility_payments__provider",
+          "utility_payments__provider_transaction_id",
+          "utility_payments__idempotency_key",
+          "utility_payments__proof_path",
+          "utility_payments__status",
+          "utility_payments__submitted_at",
+          "utility_payments__reviewed_by",
+          "utility_payments__reviewed_at",
+          "utility_payments__rejection_reason",
+          "utility_payments__created_at",
+          "utility_payments__updated_at"
+        ],
+        "groupId": "grp_utility",
+        "ui": {
+          "x": 1860,
+          "y": 1580,
+          "color": "#9a3412"
+        }
+      },
+      "notifications": {
+        "id": "notifications",
+        "name": "notifications",
+        "comment": "In-app/email; safe body only",
+        "columnIds": [
+          "notifications__id",
+          "notifications__tenant_id",
+          "notifications__recipient_id",
+          "notifications__event_type",
+          "notifications__channel",
+          "notifications__title",
+          "notifications__body",
+          "notifications__link_path",
+          "notifications__delivery_status",
+          "notifications__created_at",
+          "notifications__read_at"
+        ],
+        "groupId": "grp_cross",
+        "ui": {
+          "x": 2260,
+          "y": 100,
+          "color": "#64748b"
+        }
+      },
+      "audit_logs": {
+        "id": "audit_logs",
+        "name": "audit_logs",
+        "comment": "Append-only sensitive actions",
+        "columnIds": [
+          "audit_logs__id",
+          "audit_logs__tenant_id",
+          "audit_logs__actor_id",
+          "audit_logs__action",
+          "audit_logs__entity_type",
+          "audit_logs__entity_id",
+          "audit_logs__metadata",
+          "audit_logs__created_at"
+        ],
+        "groupId": "grp_cross",
+        "ui": {
+          "x": 2580,
+          "y": 100,
+          "color": "#334155"
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "profiles__id": {
+        "id": "profiles__id",
+        "tableId": "profiles",
+        "name": "id",
+        "comment": "= auth.users.id",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "profiles__full_name": {
+        "id": "profiles__full_name",
+        "tableId": "profiles",
+        "name": "full_name",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "profiles__phone": {
+        "id": "profiles__phone",
+        "tableId": "profiles",
+        "name": "phone",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "profiles__email": {
+        "id": "profiles__email",
+        "tableId": "profiles",
+        "name": "email",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "profiles__avatar_url": {
+        "id": "profiles__avatar_url",
+        "tableId": "profiles",
+        "name": "avatar_url",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "profiles__preferred_language": {
+        "id": "profiles__preferred_language",
+        "tableId": "profiles",
+        "name": "preferred_language",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'so'",
+        "options": 0
+      },
+      "profiles__created_at": {
+        "id": "profiles__created_at",
+        "tableId": "profiles",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "profiles__updated_at": {
+        "id": "profiles__updated_at",
+        "tableId": "profiles",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "tenants__id": {
+        "id": "tenants__id",
+        "tableId": "tenants",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "tenants__name": {
+        "id": "tenants__name",
+        "tableId": "tenants",
+        "name": "name",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "tenants__slug": {
+        "id": "tenants__slug",
+        "tableId": "tenants",
+        "name": "slug",
+        "comment": "subdomain key e.g. acme.ijaaro.com",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 12
+      },
+      "tenants__tenant_type": {
+        "id": "tenants__tenant_type",
+        "tableId": "tenants",
+        "name": "tenant_type",
+        "comment": "platform|landlord|water_company|electricity_company",
+        "dataType": "tenant_type",
+        "default": "",
+        "options": 8
+      },
+      "tenants__status": {
+        "id": "tenants__status",
+        "tableId": "tenants",
+        "name": "status",
+        "comment": "",
+        "dataType": "tenant_status",
+        "default": "'pending'",
+        "options": 8
+      },
+      "tenants__branding": {
+        "id": "tenants__branding",
+        "tableId": "tenants",
+        "name": "branding",
+        "comment": "",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "tenants__settings": {
+        "id": "tenants__settings",
+        "tableId": "tenants",
+        "name": "settings",
+        "comment": "",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "tenants__created_at": {
+        "id": "tenants__created_at",
+        "tableId": "tenants",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "tenants__updated_at": {
+        "id": "tenants__updated_at",
+        "tableId": "tenants",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "tenant_memberships__id": {
+        "id": "tenant_memberships__id",
+        "tableId": "tenant_memberships",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "tenant_memberships__tenant_id": {
+        "id": "tenant_memberships__tenant_id",
+        "tableId": "tenant_memberships",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "tenant_memberships__user_id": {
+        "id": "tenant_memberships__user_id",
+        "tableId": "tenant_memberships",
+        "name": "user_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "tenant_memberships__role": {
+        "id": "tenant_memberships__role",
+        "tableId": "tenant_memberships",
+        "name": "role",
+        "comment": "super_admin|landlord_*|renter|utility_*",
+        "dataType": "app_role",
+        "default": "",
+        "options": 8
+      },
+      "tenant_memberships__status": {
+        "id": "tenant_memberships__status",
+        "tableId": "tenant_memberships",
+        "name": "status",
+        "comment": "",
+        "dataType": "membership_status",
+        "default": "'invited'",
+        "options": 8
+      },
+      "tenant_memberships__permissions": {
+        "id": "tenant_memberships__permissions",
+        "tableId": "tenant_memberships",
+        "name": "permissions",
+        "comment": "optional task overrides",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "tenant_memberships__invited_by": {
+        "id": "tenant_memberships__invited_by",
+        "tableId": "tenant_memberships",
+        "name": "invited_by",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "tenant_memberships__created_at": {
+        "id": "tenant_memberships__created_at",
+        "tableId": "tenant_memberships",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "tenant_memberships__updated_at": {
+        "id": "tenant_memberships__updated_at",
+        "tableId": "tenant_memberships",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "properties__id": {
+        "id": "properties__id",
+        "tableId": "properties",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "properties__tenant_id": {
+        "id": "properties__tenant_id",
+        "tableId": "properties",
+        "name": "tenant_id",
+        "comment": "landlord workspace",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "properties__owner_id": {
+        "id": "properties__owner_id",
+        "tableId": "properties",
+        "name": "owner_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "properties__current_renter_id": {
+        "id": "properties__current_renter_id",
+        "tableId": "properties",
+        "name": "current_renter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "properties__name": {
+        "id": "properties__name",
+        "tableId": "properties",
+        "name": "name",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__address_line": {
+        "id": "properties__address_line",
+        "tableId": "properties",
+        "name": "address_line",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "properties__district": {
+        "id": "properties__district",
+        "tableId": "properties",
+        "name": "district",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__city": {
+        "id": "properties__city",
+        "tableId": "properties",
+        "name": "city",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__property_type": {
+        "id": "properties__property_type",
+        "tableId": "properties",
+        "name": "property_type",
+        "comment": "",
+        "dataType": "property_type",
+        "default": "",
+        "options": 0
+      },
+      "properties__description": {
+        "id": "properties__description",
+        "tableId": "properties",
+        "name": "description",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__rent_amount": {
+        "id": "properties__rent_amount",
+        "tableId": "properties",
+        "name": "rent_amount",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 0
+      },
+      "properties__currency": {
+        "id": "properties__currency",
+        "tableId": "properties",
+        "name": "currency",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'USD'",
+        "options": 0
+      },
+      "properties__status": {
+        "id": "properties__status",
+        "tableId": "properties",
+        "name": "status",
+        "comment": "",
+        "dataType": "property_status",
+        "default": "'available'",
+        "options": 8
+      },
+      "properties__contact_phone": {
+        "id": "properties__contact_phone",
+        "tableId": "properties",
+        "name": "contact_phone",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__contact_email": {
+        "id": "properties__contact_email",
+        "tableId": "properties",
+        "name": "contact_email",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__created_by_tenant_id": {
+        "id": "properties__created_by_tenant_id",
+        "tableId": "properties",
+        "name": "created_by_tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "properties__created_source": {
+        "id": "properties__created_source",
+        "tableId": "properties",
+        "name": "created_source",
+        "comment": "landlord|water_company|electricity_company",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "properties__is_listed": {
+        "id": "properties__is_listed",
+        "tableId": "properties",
+        "name": "is_listed",
+        "comment": "",
+        "dataType": "BOOLEAN",
+        "default": "true",
+        "options": 8
+      },
+      "properties__created_at": {
+        "id": "properties__created_at",
+        "tableId": "properties",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "properties__updated_at": {
+        "id": "properties__updated_at",
+        "tableId": "properties",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "property_photos__id": {
+        "id": "property_photos__id",
+        "tableId": "property_photos",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "property_photos__property_id": {
+        "id": "property_photos__property_id",
+        "tableId": "property_photos",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "property_photos__tenant_id": {
+        "id": "property_photos__tenant_id",
+        "tableId": "property_photos",
+        "name": "tenant_id",
+        "comment": "denormalized for RLS",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "property_photos__storage_path": {
+        "id": "property_photos__storage_path",
+        "tableId": "property_photos",
+        "name": "storage_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "property_photos__sort_order": {
+        "id": "property_photos__sort_order",
+        "tableId": "property_photos",
+        "name": "sort_order",
+        "comment": "",
+        "dataType": "INT",
+        "default": "0",
+        "options": 0
+      },
+      "property_photos__created_at": {
+        "id": "property_photos__created_at",
+        "tableId": "property_photos",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rental_assignments__id": {
+        "id": "rental_assignments__id",
+        "tableId": "rental_assignments",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "rental_assignments__tenant_id": {
+        "id": "rental_assignments__tenant_id",
+        "tableId": "rental_assignments",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__property_id": {
+        "id": "rental_assignments__property_id",
+        "tableId": "rental_assignments",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__landlord_id": {
+        "id": "rental_assignments__landlord_id",
+        "tableId": "rental_assignments",
+        "name": "landlord_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__renter_id": {
+        "id": "rental_assignments__renter_id",
+        "tableId": "rental_assignments",
+        "name": "renter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__rent_amount": {
+        "id": "rental_assignments__rent_amount",
+        "tableId": "rental_assignments",
+        "name": "rent_amount",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__currency": {
+        "id": "rental_assignments__currency",
+        "tableId": "rental_assignments",
+        "name": "currency",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'USD'",
+        "options": 0
+      },
+      "rental_assignments__due_day": {
+        "id": "rental_assignments__due_day",
+        "tableId": "rental_assignments",
+        "name": "due_day",
+        "comment": "1-28",
+        "dataType": "INT",
+        "default": "",
+        "options": 0
+      },
+      "rental_assignments__start_date": {
+        "id": "rental_assignments__start_date",
+        "tableId": "rental_assignments",
+        "name": "start_date",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__end_date": {
+        "id": "rental_assignments__end_date",
+        "tableId": "rental_assignments",
+        "name": "end_date",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "rental_assignments__status": {
+        "id": "rental_assignments__status",
+        "tableId": "rental_assignments",
+        "name": "status",
+        "comment": "",
+        "dataType": "assignment_status",
+        "default": "",
+        "options": 8
+      },
+      "rental_assignments__notes": {
+        "id": "rental_assignments__notes",
+        "tableId": "rental_assignments",
+        "name": "notes",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rental_assignments__created_at": {
+        "id": "rental_assignments__created_at",
+        "tableId": "rental_assignments",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rental_assignments__updated_at": {
+        "id": "rental_assignments__updated_at",
+        "tableId": "rental_assignments",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rent_charges__id": {
+        "id": "rent_charges__id",
+        "tableId": "rent_charges",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "rent_charges__tenant_id": {
+        "id": "rent_charges__tenant_id",
+        "tableId": "rent_charges",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__assignment_id": {
+        "id": "rent_charges__assignment_id",
+        "tableId": "rent_charges",
+        "name": "assignment_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__property_id": {
+        "id": "rent_charges__property_id",
+        "tableId": "rent_charges",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__renter_id": {
+        "id": "rent_charges__renter_id",
+        "tableId": "rent_charges",
+        "name": "renter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__period_start": {
+        "id": "rent_charges__period_start",
+        "tableId": "rent_charges",
+        "name": "period_start",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__period_end": {
+        "id": "rent_charges__period_end",
+        "tableId": "rent_charges",
+        "name": "period_end",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__due_date": {
+        "id": "rent_charges__due_date",
+        "tableId": "rent_charges",
+        "name": "due_date",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__amount_due": {
+        "id": "rent_charges__amount_due",
+        "tableId": "rent_charges",
+        "name": "amount_due",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__amount_paid": {
+        "id": "rent_charges__amount_paid",
+        "tableId": "rent_charges",
+        "name": "amount_paid",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "0",
+        "options": 8
+      },
+      "rent_charges__balance": {
+        "id": "rent_charges__balance",
+        "tableId": "rent_charges",
+        "name": "balance",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__status": {
+        "id": "rent_charges__status",
+        "tableId": "rent_charges",
+        "name": "status",
+        "comment": "",
+        "dataType": "charge_status",
+        "default": "",
+        "options": 8
+      },
+      "rent_charges__created_at": {
+        "id": "rent_charges__created_at",
+        "tableId": "rent_charges",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rent_charges__updated_at": {
+        "id": "rent_charges__updated_at",
+        "tableId": "rent_charges",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rent_payments__id": {
+        "id": "rent_payments__id",
+        "tableId": "rent_payments",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "rent_payments__tenant_id": {
+        "id": "rent_payments__tenant_id",
+        "tableId": "rent_payments",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__rent_charge_id": {
+        "id": "rent_payments__rent_charge_id",
+        "tableId": "rent_payments",
+        "name": "rent_charge_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__property_id": {
+        "id": "rent_payments__property_id",
+        "tableId": "rent_payments",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__assignment_id": {
+        "id": "rent_payments__assignment_id",
+        "tableId": "rent_payments",
+        "name": "assignment_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__payer_id": {
+        "id": "rent_payments__payer_id",
+        "tableId": "rent_payments",
+        "name": "payer_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__amount": {
+        "id": "rent_payments__amount",
+        "tableId": "rent_payments",
+        "name": "amount",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__currency": {
+        "id": "rent_payments__currency",
+        "tableId": "rent_payments",
+        "name": "currency",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'USD'",
+        "options": 0
+      },
+      "rent_payments__method": {
+        "id": "rent_payments__method",
+        "tableId": "rent_payments",
+        "name": "method",
+        "comment": "",
+        "dataType": "payment_method",
+        "default": "",
+        "options": 8
+      },
+      "rent_payments__reference": {
+        "id": "rent_payments__reference",
+        "tableId": "rent_payments",
+        "name": "reference",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__provider": {
+        "id": "rent_payments__provider",
+        "tableId": "rent_payments",
+        "name": "provider",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__provider_transaction_id": {
+        "id": "rent_payments__provider_transaction_id",
+        "tableId": "rent_payments",
+        "name": "provider_transaction_id",
+        "comment": "unique when set",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__idempotency_key": {
+        "id": "rent_payments__idempotency_key",
+        "tableId": "rent_payments",
+        "name": "idempotency_key",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__proof_path": {
+        "id": "rent_payments__proof_path",
+        "tableId": "rent_payments",
+        "name": "proof_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__status": {
+        "id": "rent_payments__status",
+        "tableId": "rent_payments",
+        "name": "status",
+        "comment": "",
+        "dataType": "payment_status",
+        "default": "'pending'",
+        "options": 8
+      },
+      "rent_payments__submitted_at": {
+        "id": "rent_payments__submitted_at",
+        "tableId": "rent_payments",
+        "name": "submitted_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rent_payments__reviewed_by": {
+        "id": "rent_payments__reviewed_by",
+        "tableId": "rent_payments",
+        "name": "reviewed_by",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__reviewed_at": {
+        "id": "rent_payments__reviewed_at",
+        "tableId": "rent_payments",
+        "name": "reviewed_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__rejection_reason": {
+        "id": "rent_payments__rejection_reason",
+        "tableId": "rent_payments",
+        "name": "rejection_reason",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "rent_payments__created_at": {
+        "id": "rent_payments__created_at",
+        "tableId": "rent_payments",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "rent_payments__updated_at": {
+        "id": "rent_payments__updated_at",
+        "tableId": "rent_payments",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "maintenance_requests__id": {
+        "id": "maintenance_requests__id",
+        "tableId": "maintenance_requests",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "maintenance_requests__tenant_id": {
+        "id": "maintenance_requests__tenant_id",
+        "tableId": "maintenance_requests",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "maintenance_requests__property_id": {
+        "id": "maintenance_requests__property_id",
+        "tableId": "maintenance_requests",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "maintenance_requests__renter_id": {
+        "id": "maintenance_requests__renter_id",
+        "tableId": "maintenance_requests",
+        "name": "renter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "maintenance_requests__category": {
+        "id": "maintenance_requests__category",
+        "tableId": "maintenance_requests",
+        "name": "category",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "maintenance_requests__urgency": {
+        "id": "maintenance_requests__urgency",
+        "tableId": "maintenance_requests",
+        "name": "urgency",
+        "comment": "",
+        "dataType": "urgency",
+        "default": "'medium'",
+        "options": 8
+      },
+      "maintenance_requests__description": {
+        "id": "maintenance_requests__description",
+        "tableId": "maintenance_requests",
+        "name": "description",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "maintenance_requests__photo_path": {
+        "id": "maintenance_requests__photo_path",
+        "tableId": "maintenance_requests",
+        "name": "photo_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "maintenance_requests__status": {
+        "id": "maintenance_requests__status",
+        "tableId": "maintenance_requests",
+        "name": "status",
+        "comment": "",
+        "dataType": "maintenance_status",
+        "default": "'pending'",
+        "options": 8
+      },
+      "maintenance_requests__created_at": {
+        "id": "maintenance_requests__created_at",
+        "tableId": "maintenance_requests",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "maintenance_requests__updated_at": {
+        "id": "maintenance_requests__updated_at",
+        "tableId": "maintenance_requests",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_accounts__id": {
+        "id": "utility_accounts__id",
+        "tableId": "utility_accounts",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "utility_accounts__tenant_id": {
+        "id": "utility_accounts__tenant_id",
+        "tableId": "utility_accounts",
+        "name": "tenant_id",
+        "comment": "water OR electricity company",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_accounts__property_id": {
+        "id": "utility_accounts__property_id",
+        "tableId": "utility_accounts",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_accounts__service_type": {
+        "id": "utility_accounts__service_type",
+        "tableId": "utility_accounts",
+        "name": "service_type",
+        "comment": "",
+        "dataType": "service_type",
+        "default": "",
+        "options": 8
+      },
+      "utility_accounts__account_number": {
+        "id": "utility_accounts__account_number",
+        "tableId": "utility_accounts",
+        "name": "account_number",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "utility_accounts__customer_id": {
+        "id": "utility_accounts__customer_id",
+        "tableId": "utility_accounts",
+        "name": "customer_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_accounts__status": {
+        "id": "utility_accounts__status",
+        "tableId": "utility_accounts",
+        "name": "status",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'active'",
+        "options": 8
+      },
+      "utility_accounts__effective_from": {
+        "id": "utility_accounts__effective_from",
+        "tableId": "utility_accounts",
+        "name": "effective_from",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "utility_accounts__effective_to": {
+        "id": "utility_accounts__effective_to",
+        "tableId": "utility_accounts",
+        "name": "effective_to",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "utility_accounts__unit_price": {
+        "id": "utility_accounts__unit_price",
+        "tableId": "utility_accounts",
+        "name": "unit_price",
+        "comment": "",
+        "dataType": "NUMERIC(12,4)",
+        "default": "",
+        "options": 0
+      },
+      "utility_accounts__extra_charges_config": {
+        "id": "utility_accounts__extra_charges_config",
+        "tableId": "utility_accounts",
+        "name": "extra_charges_config",
+        "comment": "",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "utility_accounts__created_at": {
+        "id": "utility_accounts__created_at",
+        "tableId": "utility_accounts",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_accounts__updated_at": {
+        "id": "utility_accounts__updated_at",
+        "tableId": "utility_accounts",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "meters__id": {
+        "id": "meters__id",
+        "tableId": "meters",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "meters__tenant_id": {
+        "id": "meters__tenant_id",
+        "tableId": "meters",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meters__utility_account_id": {
+        "id": "meters__utility_account_id",
+        "tableId": "meters",
+        "name": "utility_account_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meters__meter_number": {
+        "id": "meters__meter_number",
+        "tableId": "meters",
+        "name": "meter_number",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "meters__service_type": {
+        "id": "meters__service_type",
+        "tableId": "meters",
+        "name": "service_type",
+        "comment": "",
+        "dataType": "service_type",
+        "default": "",
+        "options": 8
+      },
+      "meters__status": {
+        "id": "meters__status",
+        "tableId": "meters",
+        "name": "status",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'active'",
+        "options": 8
+      },
+      "meters__installed_at": {
+        "id": "meters__installed_at",
+        "tableId": "meters",
+        "name": "installed_at",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "meters__replaced_at": {
+        "id": "meters__replaced_at",
+        "tableId": "meters",
+        "name": "replaced_at",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 0
+      },
+      "meters__created_at": {
+        "id": "meters__created_at",
+        "tableId": "meters",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "meters__updated_at": {
+        "id": "meters__updated_at",
+        "tableId": "meters",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "meter_readings__id": {
+        "id": "meter_readings__id",
+        "tableId": "meter_readings",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "meter_readings__tenant_id": {
+        "id": "meter_readings__tenant_id",
+        "tableId": "meter_readings",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__meter_id": {
+        "id": "meter_readings__meter_id",
+        "tableId": "meter_readings",
+        "name": "meter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__utility_account_id": {
+        "id": "meter_readings__utility_account_id",
+        "tableId": "meter_readings",
+        "name": "utility_account_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__reading_value": {
+        "id": "meter_readings__reading_value",
+        "tableId": "meter_readings",
+        "name": "reading_value",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__previous_reading_value": {
+        "id": "meter_readings__previous_reading_value",
+        "tableId": "meter_readings",
+        "name": "previous_reading_value",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 0
+      },
+      "meter_readings__reading_date": {
+        "id": "meter_readings__reading_date",
+        "tableId": "meter_readings",
+        "name": "reading_date",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__units_consumed": {
+        "id": "meter_readings__units_consumed",
+        "tableId": "meter_readings",
+        "name": "units_consumed",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 0
+      },
+      "meter_readings__status": {
+        "id": "meter_readings__status",
+        "tableId": "meter_readings",
+        "name": "status",
+        "comment": "",
+        "dataType": "reading_status",
+        "default": "'valid'",
+        "options": 8
+      },
+      "meter_readings__recorded_by": {
+        "id": "meter_readings__recorded_by",
+        "tableId": "meter_readings",
+        "name": "recorded_by",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "meter_readings__correction_of_id": {
+        "id": "meter_readings__correction_of_id",
+        "tableId": "meter_readings",
+        "name": "correction_of_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "meter_readings__correction_reason": {
+        "id": "meter_readings__correction_reason",
+        "tableId": "meter_readings",
+        "name": "correction_reason",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "meter_readings__notes": {
+        "id": "meter_readings__notes",
+        "tableId": "meter_readings",
+        "name": "notes",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "meter_readings__created_at": {
+        "id": "meter_readings__created_at",
+        "tableId": "meter_readings",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "meter_readings__updated_at": {
+        "id": "meter_readings__updated_at",
+        "tableId": "meter_readings",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_bills__id": {
+        "id": "utility_bills__id",
+        "tableId": "utility_bills",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "utility_bills__tenant_id": {
+        "id": "utility_bills__tenant_id",
+        "tableId": "utility_bills",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__utility_account_id": {
+        "id": "utility_bills__utility_account_id",
+        "tableId": "utility_bills",
+        "name": "utility_account_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__property_id": {
+        "id": "utility_bills__property_id",
+        "tableId": "utility_bills",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__meter_reading_id": {
+        "id": "utility_bills__meter_reading_id",
+        "tableId": "utility_bills",
+        "name": "meter_reading_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__service_type": {
+        "id": "utility_bills__service_type",
+        "tableId": "utility_bills",
+        "name": "service_type",
+        "comment": "",
+        "dataType": "service_type",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__period_start": {
+        "id": "utility_bills__period_start",
+        "tableId": "utility_bills",
+        "name": "period_start",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__period_end": {
+        "id": "utility_bills__period_end",
+        "tableId": "utility_bills",
+        "name": "period_end",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__previous_reading": {
+        "id": "utility_bills__previous_reading",
+        "tableId": "utility_bills",
+        "name": "previous_reading",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__current_reading": {
+        "id": "utility_bills__current_reading",
+        "tableId": "utility_bills",
+        "name": "current_reading",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__units_consumed": {
+        "id": "utility_bills__units_consumed",
+        "tableId": "utility_bills",
+        "name": "units_consumed",
+        "comment": "",
+        "dataType": "NUMERIC(14,3)",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__unit_price": {
+        "id": "utility_bills__unit_price",
+        "tableId": "utility_bills",
+        "name": "unit_price",
+        "comment": "",
+        "dataType": "NUMERIC(12,4)",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__extra_charges": {
+        "id": "utility_bills__extra_charges",
+        "tableId": "utility_bills",
+        "name": "extra_charges",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "0",
+        "options": 0
+      },
+      "utility_bills__total_amount": {
+        "id": "utility_bills__total_amount",
+        "tableId": "utility_bills",
+        "name": "total_amount",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__amount_paid": {
+        "id": "utility_bills__amount_paid",
+        "tableId": "utility_bills",
+        "name": "amount_paid",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "0",
+        "options": 8
+      },
+      "utility_bills__balance": {
+        "id": "utility_bills__balance",
+        "tableId": "utility_bills",
+        "name": "balance",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__due_date": {
+        "id": "utility_bills__due_date",
+        "tableId": "utility_bills",
+        "name": "due_date",
+        "comment": "",
+        "dataType": "DATE",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__status": {
+        "id": "utility_bills__status",
+        "tableId": "utility_bills",
+        "name": "status",
+        "comment": "",
+        "dataType": "bill_status",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__responsible_party_id": {
+        "id": "utility_bills__responsible_party_id",
+        "tableId": "utility_bills",
+        "name": "responsible_party_id",
+        "comment": "snapshot — never rewrite",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_bills__responsible_party_role": {
+        "id": "utility_bills__responsible_party_role",
+        "tableId": "utility_bills",
+        "name": "responsible_party_role",
+        "comment": "renter|owner",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__occupancy_snapshot": {
+        "id": "utility_bills__occupancy_snapshot",
+        "tableId": "utility_bills",
+        "name": "occupancy_snapshot",
+        "comment": "",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "utility_bills__created_at": {
+        "id": "utility_bills__created_at",
+        "tableId": "utility_bills",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_bills__updated_at": {
+        "id": "utility_bills__updated_at",
+        "tableId": "utility_bills",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_payments__id": {
+        "id": "utility_payments__id",
+        "tableId": "utility_payments",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "utility_payments__tenant_id": {
+        "id": "utility_payments__tenant_id",
+        "tableId": "utility_payments",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__utility_bill_id": {
+        "id": "utility_payments__utility_bill_id",
+        "tableId": "utility_payments",
+        "name": "utility_bill_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__utility_account_id": {
+        "id": "utility_payments__utility_account_id",
+        "tableId": "utility_payments",
+        "name": "utility_account_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__payer_id": {
+        "id": "utility_payments__payer_id",
+        "tableId": "utility_payments",
+        "name": "payer_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__amount": {
+        "id": "utility_payments__amount",
+        "tableId": "utility_payments",
+        "name": "amount",
+        "comment": "",
+        "dataType": "NUMERIC(12,2)",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__currency": {
+        "id": "utility_payments__currency",
+        "tableId": "utility_payments",
+        "name": "currency",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "'USD'",
+        "options": 0
+      },
+      "utility_payments__method": {
+        "id": "utility_payments__method",
+        "tableId": "utility_payments",
+        "name": "method",
+        "comment": "",
+        "dataType": "payment_method",
+        "default": "",
+        "options": 8
+      },
+      "utility_payments__reference": {
+        "id": "utility_payments__reference",
+        "tableId": "utility_payments",
+        "name": "reference",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__provider": {
+        "id": "utility_payments__provider",
+        "tableId": "utility_payments",
+        "name": "provider",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__provider_transaction_id": {
+        "id": "utility_payments__provider_transaction_id",
+        "tableId": "utility_payments",
+        "name": "provider_transaction_id",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__idempotency_key": {
+        "id": "utility_payments__idempotency_key",
+        "tableId": "utility_payments",
+        "name": "idempotency_key",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__proof_path": {
+        "id": "utility_payments__proof_path",
+        "tableId": "utility_payments",
+        "name": "proof_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__status": {
+        "id": "utility_payments__status",
+        "tableId": "utility_payments",
+        "name": "status",
+        "comment": "",
+        "dataType": "payment_status",
+        "default": "'pending'",
+        "options": 8
+      },
+      "utility_payments__submitted_at": {
+        "id": "utility_payments__submitted_at",
+        "tableId": "utility_payments",
+        "name": "submitted_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_payments__reviewed_by": {
+        "id": "utility_payments__reviewed_by",
+        "tableId": "utility_payments",
+        "name": "reviewed_by",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__reviewed_at": {
+        "id": "utility_payments__reviewed_at",
+        "tableId": "utility_payments",
+        "name": "reviewed_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__rejection_reason": {
+        "id": "utility_payments__rejection_reason",
+        "tableId": "utility_payments",
+        "name": "rejection_reason",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "utility_payments__created_at": {
+        "id": "utility_payments__created_at",
+        "tableId": "utility_payments",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "utility_payments__updated_at": {
+        "id": "utility_payments__updated_at",
+        "tableId": "utility_payments",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "notifications__id": {
+        "id": "notifications__id",
+        "tableId": "notifications",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "notifications__tenant_id": {
+        "id": "notifications__tenant_id",
+        "tableId": "notifications",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "notifications__recipient_id": {
+        "id": "notifications__recipient_id",
+        "tableId": "notifications",
+        "name": "recipient_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "notifications__event_type": {
+        "id": "notifications__event_type",
+        "tableId": "notifications",
+        "name": "event_type",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "notifications__channel": {
+        "id": "notifications__channel",
+        "tableId": "notifications",
+        "name": "channel",
+        "comment": "",
+        "dataType": "notification_channel",
+        "default": "",
+        "options": 8
+      },
+      "notifications__title": {
+        "id": "notifications__title",
+        "tableId": "notifications",
+        "name": "title",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "notifications__body": {
+        "id": "notifications__body",
+        "tableId": "notifications",
+        "name": "body",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "notifications__link_path": {
+        "id": "notifications__link_path",
+        "tableId": "notifications",
+        "name": "link_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0
+      },
+      "notifications__delivery_status": {
+        "id": "notifications__delivery_status",
+        "tableId": "notifications",
+        "name": "delivery_status",
+        "comment": "",
+        "dataType": "delivery_status",
+        "default": "'pending'",
+        "options": 8
+      },
+      "notifications__created_at": {
+        "id": "notifications__created_at",
+        "tableId": "notifications",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      },
+      "notifications__read_at": {
+        "id": "notifications__read_at",
+        "tableId": "notifications",
+        "name": "read_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "",
+        "options": 0
+      },
+      "audit_logs__id": {
+        "id": "audit_logs__id",
+        "tableId": "audit_logs",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10
+      },
+      "audit_logs__tenant_id": {
+        "id": "audit_logs__tenant_id",
+        "tableId": "audit_logs",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "audit_logs__actor_id": {
+        "id": "audit_logs__actor_id",
+        "tableId": "audit_logs",
+        "name": "actor_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8
+      },
+      "audit_logs__action": {
+        "id": "audit_logs__action",
+        "tableId": "audit_logs",
+        "name": "action",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "audit_logs__entity_type": {
+        "id": "audit_logs__entity_type",
+        "tableId": "audit_logs",
+        "name": "entity_type",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8
+      },
+      "audit_logs__entity_id": {
+        "id": "audit_logs__entity_id",
+        "tableId": "audit_logs",
+        "name": "entity_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 0
+      },
+      "audit_logs__metadata": {
+        "id": "audit_logs__metadata",
+        "tableId": "audit_logs",
+        "name": "metadata",
+        "comment": "",
+        "dataType": "JSONB",
+        "default": "",
+        "options": 0
+      },
+      "audit_logs__created_at": {
+        "id": "audit_logs__created_at",
+        "tableId": "audit_logs",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8
+      }
+    },
+    "relationshipEntities": {
+      "rel_tm_tenant": {
+        "id": "rel_tm_tenant",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "tenants",
+          "columnIds": [
+            "tenants__id"
+          ]
+        },
+        "end": {
+          "tableId": "tenant_memberships",
+          "columnIds": [
+            "tenant_memberships__tenant_id"
+          ]
+        }
+      },
+      "rel_tm_user": {
+        "id": "rel_tm_user",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "tenant_memberships",
+          "columnIds": [
+            "tenant_memberships__user_id"
+          ]
+        }
+      },
+      "rel_tm_invited": {
+        "id": "rel_tm_invited",
+        "relationshipType": 4,
+        "onDelete": 8,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "tenant_memberships",
+          "columnIds": [
+            "tenant_memberships__invited_by"
+          ]
+        }
+      },
+      "rel_prop_tenant": {
+        "id": "rel_prop_tenant",
+        "relationshipType": 4,
+        "onDelete": 8,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "tenants",
+          "columnIds": [
+            "tenants__id"
+          ]
+        },
+        "end": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__tenant_id"
+          ]
+        }
+      },
+      "rel_prop_owner": {
+        "id": "rel_prop_owner",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__owner_id"
+          ]
+        }
+      },
+      "rel_prop_renter": {
+        "id": "rel_prop_renter",
+        "relationshipType": 4,
+        "onDelete": 8,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__current_renter_id"
+          ]
+        }
+      },
+      "rel_photo_prop": {
+        "id": "rel_photo_prop",
+        "relationshipType": 16,
+        "onDelete": 4,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__id"
+          ]
+        },
+        "end": {
+          "tableId": "property_photos",
+          "columnIds": [
+            "property_photos__property_id"
+          ]
+        }
+      },
+      "rel_ra_prop": {
+        "id": "rel_ra_prop",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__id"
+          ]
+        },
+        "end": {
+          "tableId": "rental_assignments",
+          "columnIds": [
+            "rental_assignments__property_id"
+          ]
+        }
+      },
+      "rel_ra_tenant": {
+        "id": "rel_ra_tenant",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "tenants",
+          "columnIds": [
+            "tenants__id"
+          ]
+        },
+        "end": {
+          "tableId": "rental_assignments",
+          "columnIds": [
+            "rental_assignments__tenant_id"
+          ]
+        }
+      },
+      "rel_ra_landlord": {
+        "id": "rel_ra_landlord",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "rental_assignments",
+          "columnIds": [
+            "rental_assignments__landlord_id"
+          ]
+        }
+      },
+      "rel_ra_renter": {
+        "id": "rel_ra_renter",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "rental_assignments",
+          "columnIds": [
+            "rental_assignments__renter_id"
+          ]
+        }
+      },
+      "rel_rc_assign": {
+        "id": "rel_rc_assign",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "rental_assignments",
+          "columnIds": [
+            "rental_assignments__id"
+          ]
+        },
+        "end": {
+          "tableId": "rent_charges",
+          "columnIds": [
+            "rent_charges__assignment_id"
+          ]
+        }
+      },
+      "rel_rp_charge": {
+        "id": "rel_rp_charge",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "rent_charges",
+          "columnIds": [
+            "rent_charges__id"
+          ]
+        },
+        "end": {
+          "tableId": "rent_payments",
+          "columnIds": [
+            "rent_payments__rent_charge_id"
+          ]
+        }
+      },
+      "rel_rp_payer": {
+        "id": "rel_rp_payer",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "rent_payments",
+          "columnIds": [
+            "rent_payments__payer_id"
+          ]
+        }
+      },
+      "rel_ua_tenant": {
+        "id": "rel_ua_tenant",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "tenants",
+          "columnIds": [
+            "tenants__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_accounts",
+          "columnIds": [
+            "utility_accounts__tenant_id"
+          ]
+        }
+      },
+      "rel_ua_prop": {
+        "id": "rel_ua_prop",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_accounts",
+          "columnIds": [
+            "utility_accounts__property_id"
+          ]
+        }
+      },
+      "rel_ua_cust": {
+        "id": "rel_ua_cust",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_accounts",
+          "columnIds": [
+            "utility_accounts__customer_id"
+          ]
+        }
+      },
+      "rel_meter_ua": {
+        "id": "rel_meter_ua",
+        "relationshipType": 16,
+        "onDelete": 4,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "utility_accounts",
+          "columnIds": [
+            "utility_accounts__id"
+          ]
+        },
+        "end": {
+          "tableId": "meters",
+          "columnIds": [
+            "meters__utility_account_id"
+          ]
+        }
+      },
+      "rel_mr_meter": {
+        "id": "rel_mr_meter",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "meters",
+          "columnIds": [
+            "meters__id"
+          ]
+        },
+        "end": {
+          "tableId": "meter_readings",
+          "columnIds": [
+            "meter_readings__meter_id"
+          ]
+        }
+      },
+      "rel_mr_corr": {
+        "id": "rel_mr_corr",
+        "relationshipType": 4,
+        "onDelete": 8,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "meter_readings",
+          "columnIds": [
+            "meter_readings__id"
+          ]
+        },
+        "end": {
+          "tableId": "meter_readings",
+          "columnIds": [
+            "meter_readings__correction_of_id"
+          ]
+        }
+      },
+      "rel_ub_ua": {
+        "id": "rel_ub_ua",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "utility_accounts",
+          "columnIds": [
+            "utility_accounts__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_bills",
+          "columnIds": [
+            "utility_bills__utility_account_id"
+          ]
+        }
+      },
+      "rel_ub_resp": {
+        "id": "rel_ub_resp",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_bills",
+          "columnIds": [
+            "utility_bills__responsible_party_id"
+          ]
+        }
+      },
+      "rel_up_bill": {
+        "id": "rel_up_bill",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "utility_bills",
+          "columnIds": [
+            "utility_bills__id"
+          ]
+        },
+        "end": {
+          "tableId": "utility_payments",
+          "columnIds": [
+            "utility_payments__utility_bill_id"
+          ]
+        }
+      },
+      "rel_maint_prop": {
+        "id": "rel_maint_prop",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "properties",
+          "columnIds": [
+            "properties__id"
+          ]
+        },
+        "end": {
+          "tableId": "maintenance_requests",
+          "columnIds": [
+            "maintenance_requests__property_id"
+          ]
+        }
+      },
+      "rel_maint_renter": {
+        "id": "rel_maint_renter",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "maintenance_requests",
+          "columnIds": [
+            "maintenance_requests__renter_id"
+          ]
+        }
+      },
+      "rel_notif_recip": {
+        "id": "rel_notif_recip",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "notifications",
+          "columnIds": [
+            "notifications__recipient_id"
+          ]
+        }
+      },
+      "rel_audit_actor": {
+        "id": "rel_audit_actor",
+        "relationshipType": 16,
+        "onDelete": 32,
+        "onUpdate": 4,
+        "start": {
+          "tableId": "profiles",
+          "columnIds": [
+            "profiles__id"
+          ]
+        },
+        "end": {
+          "tableId": "audit_logs",
+          "columnIds": [
+            "audit_logs__actor_id"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "idx_tm_tenant_user": {
+        "id": "idx_tm_tenant_user",
+        "name": "uq_tenant_memberships_tenant_user",
+        "tableId": "tenant_memberships",
+        "indexColumnIds": [
+          "idx_tm_tenant_user__tenant_id",
+          "idx_tm_tenant_user__user_id"
+        ],
+        "unique": true
+      },
+      "idx_ua_acct": {
+        "id": "idx_ua_acct",
+        "name": "uq_utility_accounts_tenant_account",
+        "tableId": "utility_accounts",
+        "indexColumnIds": [
+          "idx_ua_acct__tenant_id",
+          "idx_ua_acct__account_number"
+        ],
+        "unique": true
+      },
+      "idx_meter_num": {
+        "id": "idx_meter_num",
+        "name": "uq_meters_tenant_number",
+        "tableId": "meters",
+        "indexColumnIds": [
+          "idx_meter_num__tenant_id",
+          "idx_meter_num__meter_number"
+        ],
+        "unique": true
+      },
+      "idx_rp_provider": {
+        "id": "idx_rp_provider",
+        "name": "uq_rent_payments_provider_txn",
+        "tableId": "rent_payments",
+        "indexColumnIds": [
+          "idx_rp_provider__provider_transaction_id"
+        ],
+        "unique": true
+      },
+      "idx_up_provider": {
+        "id": "idx_up_provider",
+        "name": "uq_utility_payments_provider_txn",
+        "tableId": "utility_payments",
+        "indexColumnIds": [
+          "idx_up_provider__provider_transaction_id"
+        ],
+        "unique": true
+      }
+    },
+    "indexColumnEntities": {
+      "idx_tm_tenant_user__tenant_id": {
+        "id": "idx_tm_tenant_user__tenant_id",
+        "indexId": "idx_tm_tenant_user",
+        "columnId": "tenant_memberships__tenant_id",
+        "orderType": 1
+      },
+      "idx_tm_tenant_user__user_id": {
+        "id": "idx_tm_tenant_user__user_id",
+        "indexId": "idx_tm_tenant_user",
+        "columnId": "tenant_memberships__user_id",
+        "orderType": 1
+      },
+      "idx_ua_acct__tenant_id": {
+        "id": "idx_ua_acct__tenant_id",
+        "indexId": "idx_ua_acct",
+        "columnId": "utility_accounts__tenant_id",
+        "orderType": 1
+      },
+      "idx_ua_acct__account_number": {
+        "id": "idx_ua_acct__account_number",
+        "indexId": "idx_ua_acct",
+        "columnId": "utility_accounts__account_number",
+        "orderType": 1
+      },
+      "idx_meter_num__tenant_id": {
+        "id": "idx_meter_num__tenant_id",
+        "indexId": "idx_meter_num",
+        "columnId": "meters__tenant_id",
+        "orderType": 1
+      },
+      "idx_meter_num__meter_number": {
+        "id": "idx_meter_num__meter_number",
+        "indexId": "idx_meter_num",
+        "columnId": "meters__meter_number",
+        "orderType": 1
+      },
+      "idx_rp_provider__provider_transaction_id": {
+        "id": "idx_rp_provider__provider_transaction_id",
+        "indexId": "idx_rp_provider",
+        "columnId": "rent_payments__provider_transaction_id",
+        "orderType": 1
+      },
+      "idx_up_provider__provider_transaction_id": {
+        "id": "idx_up_provider__provider_transaction_id",
+        "indexId": "idx_up_provider",
+        "columnId": "utility_payments__provider_transaction_id",
+        "orderType": 1
+      }
+    },
+    "memoEntities": {
+      "memo_flow": {
+        "id": "memo_flow",
+        "value": "IJAARO multi-tenant flow (like SaaS lanes)\n\n1) ijaaro.com landing\n2) Register tenant → provisioning\n3) slug.ijaaro.com login\n   • Landlord: admin / staff / renter\n   • Water Co: admin / staff / customer\n   • Electricity Co: admin / staff / customer\n\nIsolation: tenant_id + RLS\nApprovals never cross tenant type",
+        "ui": {
+          "x": 420,
+          "y": 160,
+          "width": 360,
+          "height": 280,
+          "color": "#fef3c7"
+        }
+      },
+      "memo_roles_landlord": {
+        "id": "memo_roles_landlord",
+        "value": "LANDLORD LOGIN ROLES\n• landlord_admin\n• landlord_staff\n• renter\n\nApproves: RENT only",
+        "ui": {
+          "x": 1960,
+          "y": 720,
+          "width": 160,
+          "height": 160,
+          "color": "#d1fae5"
+        }
+      },
+      "memo_roles_utility": {
+        "id": "memo_roles_utility",
+        "value": "UTILITY LOGIN ROLES\n• utility_admin\n• utility_staff\n• utility_customer\n\nApproves: OWN service only\n(water≠electricity)",
+        "ui": {
+          "x": 2260,
+          "y": 1580,
+          "width": 200,
+          "height": 180,
+          "color": "#ffedd5"
+        }
+      }
+    },
+    "tableGroupEntities": {
+      "grp_platform": {
+        "id": "grp_platform",
+        "name": "1. PLATFORM & AUTH\n(ijaaro.com landing → login)",
+        "color": "#1e3a8a",
+        "ui": {
+          "x": 40,
+          "y": 40,
+          "width": 1180,
+          "height": 520
+        }
+      },
+      "grp_provision": {
+        "id": "grp_provision",
+        "name": "2. TENANT PROVISIONING\n(register landlord / water / electricity)",
+        "color": "#5b21b6",
+        "ui": {
+          "x": 1280,
+          "y": 40,
+          "width": 900,
+          "height": 520
+        }
+      },
+      "grp_landlord": {
+        "id": "grp_landlord",
+        "name": "3A. LANDLORD TENANT\nslug.ijaaro.com  |  roles: landlord_admin · landlord_staff · renter",
+        "color": "#065f46",
+        "ui": {
+          "x": 40,
+          "y": 620,
+          "width": 2100,
+          "height": 780
+        }
+      },
+      "grp_utility": {
+        "id": "grp_utility",
+        "name": "3B. UTILITY COMPANY TENANT\nwater|electricity.ijaaro.com  |  roles: utility_admin · utility_staff · utility_customer",
+        "color": "#9a3412",
+        "ui": {
+          "x": 40,
+          "y": 1480,
+          "width": 2500,
+          "height": 900
+        }
+      },
+      "grp_cross": {
+        "id": "grp_cross",
+        "name": "4. CROSS-CUTTING\n(notifications · audit — tenant scoped)",
+        "color": "#334155",
+        "ui": {
+          "x": 2200,
+          "y": 40,
+          "width": 720,
+          "height": 520
+        }
+      }
+    }
+  }
+}

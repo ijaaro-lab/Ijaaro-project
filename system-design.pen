@@ -1,0 +1,17 @@
+{
+  "version": "2.6",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": 0,
+      "y": 0,
+      "name": "IJAARO System Design",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "#0B1220",
+      "layout": "none"
+    }
+  ]
+}
