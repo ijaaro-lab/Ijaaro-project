@@ -2,9 +2,13 @@
   "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
   "version": "3.0.0",
   "settings": {
-    "originX": 0,
-    "originY": 0,
-    "zoomLevel": 0.45,
+    "width": 2000,
+    "height": 2000,
+    "scrollTop": 0,
+    "scrollLeft": 0,
+    "originX": 285.4299,
+    "originY": 295.3257,
+    "zoomLevel": 0.1,
     "show": 511,
     "database": 16,
     "databaseName": "ijaaro",
@@ -14,6 +18,7 @@
     "columnNameCase": 8,
     "bracketType": 2,
     "relationshipDataTypeSync": true,
+    "relationshipOptimization": false,
     "columnOrder": [
       1,
       2,
@@ -24,7 +29,7 @@
       64
     ],
     "maxWidthComment": 120,
-    "lockSettings": 0
+    "ignoreSaveSettings": 0
   },
   "doc": {
     "tableIds": [
@@ -36,12 +41,12 @@
       "rental_assignments",
       "rent_charges",
       "rent_payments",
-      "maintenance_requests",
       "utility_accounts",
       "meters",
       "meter_readings",
       "utility_bills",
       "utility_payments",
+      "maintenance_requests",
       "notifications",
       "audit_logs"
     ],
@@ -82,16 +87,8 @@
       "idx_up_provider"
     ],
     "memoIds": [
-      "memo_flow",
-      "memo_roles_landlord",
-      "memo_roles_utility"
-    ],
-    "tableGroupIds": [
-      "grp_platform",
-      "grp_provision",
-      "grp_landlord",
-      "grp_utility",
-      "grp_cross"
+      "memo_security",
+      "memo_chain"
     ]
   },
   "collections": {
@@ -99,7 +96,7 @@
       "profiles": {
         "id": "profiles",
         "name": "profiles",
-        "comment": "Auth profile = auth.users.id",
+        "comment": "Auth-linked user profile (id = auth.users.id)",
         "columnIds": [
           "profiles__id",
           "profiles__full_name",
@@ -110,11 +107,18 @@
           "profiles__created_at",
           "profiles__updated_at"
         ],
-        "groupId": "grp_platform",
+        "seqColumnIds": [],
         "ui": {
-          "x": 80,
-          "y": 120,
+          "x": -670.5263,
+          "y": -1172.1052,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 229,
           "color": "#2563eb"
+        },
+        "meta": {
+          "updateAt": 1791726652507,
+          "createAt": 1791726397762
         }
       },
       "tenants": {
@@ -132,17 +136,24 @@
           "tenants__created_at",
           "tenants__updated_at"
         ],
-        "groupId": "grp_provision",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1340,
-          "y": 120,
+          "x": 51.5789,
+          "y": -235.7895,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 263,
           "color": "#7c3aed"
+        },
+        "meta": {
+          "updateAt": 1791726458436,
+          "createAt": 1791726397762
         }
       },
       "tenant_memberships": {
         "id": "tenant_memberships",
         "name": "tenant_memberships",
-        "comment": "User ↔ Tenant ↔ Role (RBAC)",
+        "comment": "User↔tenant↔role (RBAC source of truth)",
         "columnIds": [
           "tenant_memberships__id",
           "tenant_memberships__tenant_id",
@@ -154,17 +165,24 @@
           "tenant_memberships__created_at",
           "tenant_memberships__updated_at"
         ],
-        "groupId": "grp_provision",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1700,
-          "y": 120,
+          "x": 2444.2105,
+          "y": -619.9999,
+          "zIndex": 2,
+          "widthName": 112,
+          "widthComment": 222,
           "color": "#db2777"
+        },
+        "meta": {
+          "updateAt": 1791726472605,
+          "createAt": 1791726397762
         }
       },
       "properties": {
         "id": "properties",
         "name": "properties",
-        "comment": "Canonical premises (no duplicates)",
+        "comment": "Canonical premises (rental + utility link target)",
         "columnIds": [
           "properties__id",
           "properties__tenant_id",
@@ -187,17 +205,24 @@
           "properties__created_at",
           "properties__updated_at"
         ],
-        "groupId": "grp_landlord",
+        "seqColumnIds": [],
         "ui": {
-          "x": 80,
-          "y": 720,
+          "x": -467.3684,
+          "y": 162.1051,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 246,
           "color": "#059669"
+        },
+        "meta": {
+          "updateAt": 1791726454585,
+          "createAt": 1791726397762
         }
       },
       "property_photos": {
         "id": "property_photos",
         "name": "property_photos",
-        "comment": "Listing photos (private storage)",
+        "comment": "Private storage paths for listing photos",
         "columnIds": [
           "property_photos__id",
           "property_photos__property_id",
@@ -206,17 +231,24 @@
           "property_photos__sort_order",
           "property_photos__created_at"
         ],
-        "groupId": "grp_landlord",
+        "seqColumnIds": [],
         "ui": {
-          "x": 480,
-          "y": 720,
+          "x": 80,
+          "y": 820,
+          "zIndex": 2,
+          "widthName": 90,
+          "widthComment": 207,
           "color": "#10b981"
+        },
+        "meta": {
+          "updateAt": 1791726397762,
+          "createAt": 1791726397762
         }
       },
       "rental_assignments": {
         "id": "rental_assignments",
         "name": "rental_assignments",
-        "comment": "Tenancy history; 1 ACTIVE / property",
+        "comment": "Tenancy history; one ACTIVE per property",
         "columnIds": [
           "rental_assignments__id",
           "rental_assignments__tenant_id",
@@ -233,11 +265,18 @@
           "rental_assignments__created_at",
           "rental_assignments__updated_at"
         ],
-        "groupId": "grp_landlord",
+        "seqColumnIds": [],
         "ui": {
-          "x": 800,
-          "y": 720,
+          "x": 713.75,
+          "y": 370,
+          "zIndex": 2,
+          "widthName": 103,
+          "widthComment": 221,
           "color": "#0d9488"
+        },
+        "meta": {
+          "updateAt": 1791733201979,
+          "createAt": 1791726397762
         }
       },
       "rent_charges": {
@@ -260,17 +299,24 @@
           "rent_charges__created_at",
           "rent_charges__updated_at"
         ],
-        "groupId": "grp_landlord",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1200,
-          "y": 720,
+          "x": 1147.0301,
+          "y": 527.7068,
+          "zIndex": 2,
+          "widthName": 69,
+          "widthComment": 97,
           "color": "#0891b2"
+        },
+        "meta": {
+          "updateAt": 1791726644159,
+          "createAt": 1791726397762
         }
       },
       "rent_payments": {
         "id": "rent_payments",
         "name": "rent_payments",
-        "comment": "Manual/API; landlord approves manual",
+        "comment": "Manual/API rent payments; landlord approves manual",
         "columnIds": [
           "rent_payments__id",
           "rent_payments__tenant_id",
@@ -294,41 +340,24 @@
           "rent_payments__created_at",
           "rent_payments__updated_at"
         ],
-        "groupId": "grp_landlord",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1580,
-          "y": 720,
+          "x": 3321.0526,
+          "y": 230.5264,
+          "zIndex": 2,
+          "widthName": 80,
+          "widthComment": 287,
           "color": "#0284c7"
-        }
-      },
-      "maintenance_requests": {
-        "id": "maintenance_requests",
-        "name": "maintenance_requests",
-        "comment": "Renter creates; landlord updates status",
-        "columnIds": [
-          "maintenance_requests__id",
-          "maintenance_requests__tenant_id",
-          "maintenance_requests__property_id",
-          "maintenance_requests__renter_id",
-          "maintenance_requests__category",
-          "maintenance_requests__urgency",
-          "maintenance_requests__description",
-          "maintenance_requests__photo_path",
-          "maintenance_requests__status",
-          "maintenance_requests__created_at",
-          "maintenance_requests__updated_at"
-        ],
-        "groupId": "grp_landlord",
-        "ui": {
-          "x": 1580,
-          "y": 1120,
-          "color": "#65a30d"
+        },
+        "meta": {
+          "updateAt": 1791726480254,
+          "createAt": 1791726397762
         }
       },
       "utility_accounts": {
         "id": "utility_accounts",
         "name": "utility_accounts",
-        "comment": "Links company tenant → property (no duplicate property)",
+        "comment": "Company-scoped account linked to property",
         "columnIds": [
           "utility_accounts__id",
           "utility_accounts__tenant_id",
@@ -344,17 +373,24 @@
           "utility_accounts__created_at",
           "utility_accounts__updated_at"
         ],
-        "groupId": "grp_utility",
+        "seqColumnIds": [],
         "ui": {
-          "x": 80,
-          "y": 1580,
+          "x": -1040.5262,
+          "y": 1749.4737,
+          "zIndex": 2,
+          "widthName": 83,
+          "widthComment": 239,
           "color": "#ea580c"
+        },
+        "meta": {
+          "updateAt": 1791726517940,
+          "createAt": 1791726397762
         }
       },
       "meters": {
         "id": "meters",
         "name": "meters",
-        "comment": "Meters on an account",
+        "comment": "Physical/logical meters on an account",
         "columnIds": [
           "meters__id",
           "meters__tenant_id",
@@ -367,11 +403,18 @@
           "meters__created_at",
           "meters__updated_at"
         ],
-        "groupId": "grp_utility",
+        "seqColumnIds": [],
         "ui": {
-          "x": 520,
-          "y": 1580,
+          "x": 420,
+          "y": 1100,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 201,
           "color": "#f97316"
+        },
+        "meta": {
+          "updateAt": 1791726397762,
+          "createAt": 1791726397762
         }
       },
       "meter_readings": {
@@ -395,17 +438,24 @@
           "meter_readings__created_at",
           "meter_readings__updated_at"
         ],
-        "groupId": "grp_utility",
+        "seqColumnIds": [],
         "ui": {
-          "x": 900,
-          "y": 1580,
+          "x": 1417.5188,
+          "y": 1206.3911,
+          "zIndex": 2,
+          "widthName": 84,
+          "widthComment": 150,
           "color": "#fb923c"
+        },
+        "meta": {
+          "updateAt": 1791726634426,
+          "createAt": 1791726397762
         }
       },
       "utility_bills": {
         "id": "utility_bills",
         "name": "utility_bills",
-        "comment": "IMMUTABLE responsible_party snapshot",
+        "comment": "Bill with IMMUTABLE responsible_party snapshot",
         "columnIds": [
           "utility_bills__id",
           "utility_bills__tenant_id",
@@ -431,17 +481,24 @@
           "utility_bills__created_at",
           "utility_bills__updated_at"
         ],
-        "groupId": "grp_utility",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1340,
-          "y": 1580,
+          "x": 2368.421,
+          "y": 921.0526,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 259,
           "color": "#c2410c"
+        },
+        "meta": {
+          "updateAt": 1791726505878,
+          "createAt": 1791726397762
         }
       },
       "utility_payments": {
         "id": "utility_payments",
         "name": "utility_payments",
-        "comment": "Company approves manual (same tenant only)",
+        "comment": "Manual/API utility payments; company approves manual",
         "columnIds": [
           "utility_payments__id",
           "utility_payments__tenant_id",
@@ -464,17 +521,55 @@
           "utility_payments__created_at",
           "utility_payments__updated_at"
         ],
-        "groupId": "grp_utility",
+        "seqColumnIds": [],
         "ui": {
-          "x": 1860,
-          "y": 1580,
+          "x": 3129.4736,
+          "y": 957.8947,
+          "zIndex": 2,
+          "widthName": 88,
+          "widthComment": 300,
           "color": "#9a3412"
+        },
+        "meta": {
+          "updateAt": 1791726503233,
+          "createAt": 1791726397762
+        }
+      },
+      "maintenance_requests": {
+        "id": "maintenance_requests",
+        "name": "maintenance_requests",
+        "comment": "Renter requests; landlord status workflow",
+        "columnIds": [
+          "maintenance_requests__id",
+          "maintenance_requests__tenant_id",
+          "maintenance_requests__property_id",
+          "maintenance_requests__renter_id",
+          "maintenance_requests__category",
+          "maintenance_requests__urgency",
+          "maintenance_requests__description",
+          "maintenance_requests__photo_path",
+          "maintenance_requests__status",
+          "maintenance_requests__created_at",
+          "maintenance_requests__updated_at"
+        ],
+        "seqColumnIds": [],
+        "ui": {
+          "x": 1971.5789,
+          "y": -237.8948,
+          "zIndex": 2,
+          "widthName": 120,
+          "widthComment": 220,
+          "color": "#65a30d"
+        },
+        "meta": {
+          "updateAt": 1791726487416,
+          "createAt": 1791726397762
         }
       },
       "notifications": {
         "id": "notifications",
         "name": "notifications",
-        "comment": "In-app/email; safe body only",
+        "comment": "In-app/email events; safe non-sensitive body",
         "columnIds": [
           "notifications__id",
           "notifications__tenant_id",
@@ -488,17 +583,24 @@
           "notifications__created_at",
           "notifications__read_at"
         ],
-        "groupId": "grp_cross",
+        "seqColumnIds": [],
         "ui": {
-          "x": 2260,
-          "y": 100,
+          "x": 2261.0526,
+          "y": -941.0526,
+          "zIndex": 2,
+          "widthName": 67,
+          "widthComment": 239,
           "color": "#64748b"
+        },
+        "meta": {
+          "updateAt": 1791726469810,
+          "createAt": 1791726397762
         }
       },
       "audit_logs": {
         "id": "audit_logs",
         "name": "audit_logs",
-        "comment": "Append-only sensitive actions",
+        "comment": "Append-only sensitive action trail",
         "columnIds": [
           "audit_logs__id",
           "audit_logs__tenant_id",
@@ -509,11 +611,18 @@
           "audit_logs__metadata",
           "audit_logs__created_at"
         ],
-        "groupId": "grp_cross",
+        "seqColumnIds": [],
         "ui": {
-          "x": 2580,
-          "y": 100,
+          "x": 2616.8421,
+          "y": 106.3157,
+          "zIndex": 2,
+          "widthName": 60,
+          "widthComment": 179,
           "color": "#334155"
+        },
+        "meta": {
+          "updateAt": 1791726490879,
+          "createAt": 1791726397762
         }
       }
     },
@@ -525,7 +634,18 @@
         "comment": "= auth.users.id",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 80,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__full_name": {
         "id": "profiles__full_name",
@@ -534,7 +654,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__phone": {
         "id": "profiles__phone",
@@ -543,7 +674,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__email": {
         "id": "profiles__email",
@@ -552,7 +694,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__avatar_url": {
         "id": "profiles__avatar_url",
@@ -561,7 +714,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__preferred_language": {
         "id": "profiles__preferred_language",
@@ -570,7 +734,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'so'",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 105,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__created_at": {
         "id": "profiles__created_at",
@@ -579,7 +754,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "profiles__updated_at": {
         "id": "profiles__updated_at",
@@ -588,7 +774,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__id": {
         "id": "tenants__id",
@@ -597,7 +794,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__name": {
         "id": "tenants__name",
@@ -606,16 +814,38 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__slug": {
         "id": "tenants__slug",
         "tableId": "tenants",
         "name": "slug",
-        "comment": "subdomain key e.g. acme.ijaaro.com",
+        "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 12
+        "options": 12,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__tenant_type": {
         "id": "tenants__tenant_type",
@@ -624,7 +854,18 @@
         "comment": "platform|landlord|water_company|electricity_company",
         "dataType": "tenant_type",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 64,
+          "widthComment": 287,
+          "widthDataType": 64,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__status": {
         "id": "tenants__status",
@@ -633,7 +874,18 @@
         "comment": "",
         "dataType": "tenant_status",
         "default": "'pending'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 72,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__branding": {
         "id": "tenants__branding",
@@ -642,7 +894,18 @@
         "comment": "",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__settings": {
         "id": "tenants__settings",
@@ -651,7 +914,18 @@
         "comment": "",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__created_at": {
         "id": "tenants__created_at",
@@ -660,7 +934,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenants__updated_at": {
         "id": "tenants__updated_at",
@@ -669,7 +954,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__id": {
         "id": "tenant_memberships__id",
@@ -678,7 +974,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__tenant_id": {
         "id": "tenant_memberships__tenant_id",
@@ -687,7 +994,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__user_id": {
         "id": "tenant_memberships__user_id",
@@ -696,16 +1014,38 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__role": {
         "id": "tenant_memberships__role",
         "tableId": "tenant_memberships",
         "name": "role",
-        "comment": "super_admin|landlord_*|renter|utility_*",
+        "comment": "super_admin|landlord_admin|landlord_staff|renter|utility_admin|utility_staff|utility_customer",
         "dataType": "app_role",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 481,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__status": {
         "id": "tenant_memberships__status",
@@ -714,7 +1054,18 @@
         "comment": "",
         "dataType": "membership_status",
         "default": "'invited'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 104,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__permissions": {
         "id": "tenant_memberships__permissions",
@@ -723,7 +1074,18 @@
         "comment": "optional task overrides",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 65,
+          "widthComment": 122,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__invited_by": {
         "id": "tenant_memberships__invited_by",
@@ -732,7 +1094,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__created_at": {
         "id": "tenant_memberships__created_at",
@@ -741,7 +1114,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "tenant_memberships__updated_at": {
         "id": "tenant_memberships__updated_at",
@@ -750,7 +1134,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__id": {
         "id": "properties__id",
@@ -759,16 +1154,38 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__tenant_id": {
         "id": "properties__tenant_id",
         "tableId": "properties",
         "name": "tenant_id",
-        "comment": "landlord workspace",
+        "comment": "landlord workspace; nullable until reconcile",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 230,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__owner_id": {
         "id": "properties__owner_id",
@@ -777,7 +1194,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__current_renter_id": {
         "id": "properties__current_renter_id",
@@ -786,7 +1214,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 2,
+          "widthName": 91,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__name": {
         "id": "properties__name",
@@ -795,7 +1234,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__address_line": {
         "id": "properties__address_line",
@@ -804,7 +1254,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 67,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__district": {
         "id": "properties__district",
@@ -813,7 +1274,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__city": {
         "id": "properties__city",
@@ -822,7 +1294,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__property_type": {
         "id": "properties__property_type",
@@ -831,7 +1314,18 @@
         "comment": "",
         "dataType": "property_type",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 76,
+          "widthComment": 60,
+          "widthDataType": 76,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__description": {
         "id": "properties__description",
@@ -840,7 +1334,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 61,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__rent_amount": {
         "id": "properties__rent_amount",
@@ -849,7 +1354,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 69,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__currency": {
         "id": "properties__currency",
@@ -858,7 +1374,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'USD'",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__status": {
         "id": "properties__status",
@@ -867,7 +1394,18 @@
         "comment": "",
         "dataType": "property_status",
         "default": "'available'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 84,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__contact_phone": {
         "id": "properties__contact_phone",
@@ -876,7 +1414,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 80,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__contact_email": {
         "id": "properties__contact_email",
@@ -885,7 +1434,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 75,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__created_by_tenant_id": {
         "id": "properties__created_by_tenant_id",
@@ -894,7 +1454,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 113,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__created_source": {
         "id": "properties__created_source",
@@ -903,7 +1474,18 @@
         "comment": "landlord|water_company|electricity_company",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 81,
+          "widthComment": 239,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__is_listed": {
         "id": "properties__is_listed",
@@ -912,7 +1494,18 @@
         "comment": "",
         "dataType": "BOOLEAN",
         "default": "true",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__created_at": {
         "id": "properties__created_at",
@@ -921,7 +1514,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "properties__updated_at": {
         "id": "properties__updated_at",
@@ -930,7 +1534,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__id": {
         "id": "property_photos__id",
@@ -939,7 +1554,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__property_id": {
         "id": "property_photos__property_id",
@@ -948,7 +1574,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__tenant_id": {
         "id": "property_photos__tenant_id",
@@ -957,7 +1594,18 @@
         "comment": "denormalized for RLS",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 115,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__storage_path": {
         "id": "property_photos__storage_path",
@@ -966,7 +1614,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__sort_order": {
         "id": "property_photos__sort_order",
@@ -975,7 +1634,18 @@
         "comment": "",
         "dataType": "INT",
         "default": "0",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "property_photos__created_at": {
         "id": "property_photos__created_at",
@@ -984,7 +1654,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__id": {
         "id": "rental_assignments__id",
@@ -993,7 +1674,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__tenant_id": {
         "id": "rental_assignments__tenant_id",
@@ -1002,7 +1694,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__property_id": {
         "id": "rental_assignments__property_id",
@@ -1011,7 +1714,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__landlord_id": {
         "id": "rental_assignments__landlord_id",
@@ -1020,7 +1734,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 61,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__renter_id": {
         "id": "rental_assignments__renter_id",
@@ -1029,7 +1754,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__rent_amount": {
         "id": "rental_assignments__rent_amount",
@@ -1038,7 +1774,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 69,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__currency": {
         "id": "rental_assignments__currency",
@@ -1047,7 +1794,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'USD'",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__due_day": {
         "id": "rental_assignments__due_day",
@@ -1056,7 +1814,18 @@
         "comment": "1-28",
         "dataType": "INT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__start_date": {
         "id": "rental_assignments__start_date",
@@ -1065,7 +1834,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__end_date": {
         "id": "rental_assignments__end_date",
@@ -1074,7 +1854,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__status": {
         "id": "rental_assignments__status",
@@ -1083,7 +1874,18 @@
         "comment": "",
         "dataType": "assignment_status",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 99,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__notes": {
         "id": "rental_assignments__notes",
@@ -1092,7 +1894,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__created_at": {
         "id": "rental_assignments__created_at",
@@ -1101,7 +1914,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rental_assignments__updated_at": {
         "id": "rental_assignments__updated_at",
@@ -1110,7 +1934,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__id": {
         "id": "rent_charges__id",
@@ -1119,7 +1954,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__tenant_id": {
         "id": "rent_charges__tenant_id",
@@ -1128,7 +1974,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__assignment_id": {
         "id": "rent_charges__assignment_id",
@@ -1137,7 +1994,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 77,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__property_id": {
         "id": "rent_charges__property_id",
@@ -1146,7 +2014,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__renter_id": {
         "id": "rent_charges__renter_id",
@@ -1155,7 +2034,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__period_start": {
         "id": "rent_charges__period_start",
@@ -1164,7 +2054,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 65,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__period_end": {
         "id": "rent_charges__period_end",
@@ -1173,7 +2074,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__due_date": {
         "id": "rent_charges__due_date",
@@ -1182,7 +2094,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__amount_due": {
         "id": "rent_charges__amount_due",
@@ -1191,7 +2114,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 68,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__amount_paid": {
         "id": "rent_charges__amount_paid",
@@ -1200,7 +2134,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "0",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__balance": {
         "id": "rent_charges__balance",
@@ -1209,7 +2154,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__status": {
         "id": "rent_charges__status",
@@ -1218,7 +2174,18 @@
         "comment": "",
         "dataType": "charge_status",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 74,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__created_at": {
         "id": "rent_charges__created_at",
@@ -1227,7 +2194,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_charges__updated_at": {
         "id": "rent_charges__updated_at",
@@ -1236,7 +2214,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__id": {
         "id": "rent_payments__id",
@@ -1245,7 +2234,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__tenant_id": {
         "id": "rent_payments__tenant_id",
@@ -1254,7 +2254,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__rent_charge_id": {
         "id": "rent_payments__rent_charge_id",
@@ -1263,7 +2274,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 79,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__property_id": {
         "id": "rent_payments__property_id",
@@ -1272,7 +2294,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__assignment_id": {
         "id": "rent_payments__assignment_id",
@@ -1281,7 +2314,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 77,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__payer_id": {
         "id": "rent_payments__payer_id",
@@ -1290,7 +2334,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__amount": {
         "id": "rent_payments__amount",
@@ -1299,7 +2354,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__currency": {
         "id": "rent_payments__currency",
@@ -1308,7 +2374,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'USD'",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__method": {
         "id": "rent_payments__method",
@@ -1317,7 +2394,18 @@
         "comment": "",
         "dataType": "payment_method",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 95,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__reference": {
         "id": "rent_payments__reference",
@@ -1326,7 +2414,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__provider": {
         "id": "rent_payments__provider",
@@ -1335,7 +2434,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__provider_transaction_id": {
         "id": "rent_payments__provider_transaction_id",
@@ -1344,7 +2454,18 @@
         "comment": "unique when set",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 125,
+          "widthComment": 89,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__idempotency_key": {
         "id": "rent_payments__idempotency_key",
@@ -1353,7 +2474,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 94,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397763,
+          "createAt": 1791726397763
+        }
       },
       "rent_payments__proof_path": {
         "id": "rent_payments__proof_path",
@@ -1362,7 +2494,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__status": {
         "id": "rent_payments__status",
@@ -1371,7 +2514,18 @@
         "comment": "",
         "dataType": "payment_status",
         "default": "'pending'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 85,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__submitted_at": {
         "id": "rent_payments__submitted_at",
@@ -1380,7 +2534,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__reviewed_by": {
         "id": "rent_payments__reviewed_by",
@@ -1389,7 +2554,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 67,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__reviewed_at": {
         "id": "rent_payments__reviewed_at",
@@ -1398,7 +2574,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 65,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__rejection_reason": {
         "id": "rent_payments__rejection_reason",
@@ -1407,7 +2594,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 88,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__created_at": {
         "id": "rent_payments__created_at",
@@ -1416,7 +2614,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "rent_payments__updated_at": {
         "id": "rent_payments__updated_at",
@@ -1425,106 +2634,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
-      },
-      "maintenance_requests__id": {
-        "id": "maintenance_requests__id",
-        "tableId": "maintenance_requests",
-        "name": "id",
-        "comment": "",
-        "dataType": "UUID",
-        "default": "gen_random_uuid()",
-        "options": 10
-      },
-      "maintenance_requests__tenant_id": {
-        "id": "maintenance_requests__tenant_id",
-        "tableId": "maintenance_requests",
-        "name": "tenant_id",
-        "comment": "",
-        "dataType": "UUID",
-        "default": "",
-        "options": 8
-      },
-      "maintenance_requests__property_id": {
-        "id": "maintenance_requests__property_id",
-        "tableId": "maintenance_requests",
-        "name": "property_id",
-        "comment": "",
-        "dataType": "UUID",
-        "default": "",
-        "options": 8
-      },
-      "maintenance_requests__renter_id": {
-        "id": "maintenance_requests__renter_id",
-        "tableId": "maintenance_requests",
-        "name": "renter_id",
-        "comment": "",
-        "dataType": "UUID",
-        "default": "",
-        "options": 8
-      },
-      "maintenance_requests__category": {
-        "id": "maintenance_requests__category",
-        "tableId": "maintenance_requests",
-        "name": "category",
-        "comment": "",
-        "dataType": "TEXT",
-        "default": "",
-        "options": 0
-      },
-      "maintenance_requests__urgency": {
-        "id": "maintenance_requests__urgency",
-        "tableId": "maintenance_requests",
-        "name": "urgency",
-        "comment": "",
-        "dataType": "urgency",
-        "default": "'medium'",
-        "options": 8
-      },
-      "maintenance_requests__description": {
-        "id": "maintenance_requests__description",
-        "tableId": "maintenance_requests",
-        "name": "description",
-        "comment": "",
-        "dataType": "TEXT",
-        "default": "",
-        "options": 8
-      },
-      "maintenance_requests__photo_path": {
-        "id": "maintenance_requests__photo_path",
-        "tableId": "maintenance_requests",
-        "name": "photo_path",
-        "comment": "",
-        "dataType": "TEXT",
-        "default": "",
-        "options": 0
-      },
-      "maintenance_requests__status": {
-        "id": "maintenance_requests__status",
-        "tableId": "maintenance_requests",
-        "name": "status",
-        "comment": "",
-        "dataType": "maintenance_status",
-        "default": "'pending'",
-        "options": 8
-      },
-      "maintenance_requests__created_at": {
-        "id": "maintenance_requests__created_at",
-        "tableId": "maintenance_requests",
-        "name": "created_at",
-        "comment": "",
-        "dataType": "TIMESTAMPTZ",
-        "default": "now()",
-        "options": 8
-      },
-      "maintenance_requests__updated_at": {
-        "id": "maintenance_requests__updated_at",
-        "tableId": "maintenance_requests",
-        "name": "updated_at",
-        "comment": "",
-        "dataType": "TIMESTAMPTZ",
-        "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__id": {
         "id": "utility_accounts__id",
@@ -1533,16 +2654,38 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__tenant_id": {
         "id": "utility_accounts__tenant_id",
         "tableId": "utility_accounts",
         "name": "tenant_id",
-        "comment": "water OR electricity company",
+        "comment": "water/electricity company",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 138,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__property_id": {
         "id": "utility_accounts__property_id",
@@ -1551,7 +2694,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__service_type": {
         "id": "utility_accounts__service_type",
@@ -1560,7 +2714,18 @@
         "comment": "",
         "dataType": "service_type",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 66,
+          "widthComment": 60,
+          "widthDataType": 66,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__account_number": {
         "id": "utility_accounts__account_number",
@@ -1569,7 +2734,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 90,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__customer_id": {
         "id": "utility_accounts__customer_id",
@@ -1578,7 +2754,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 66,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__status": {
         "id": "utility_accounts__status",
@@ -1587,7 +2774,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'active'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__effective_from": {
         "id": "utility_accounts__effective_from",
@@ -1596,7 +2794,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 77,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__effective_to": {
         "id": "utility_accounts__effective_to",
@@ -1605,7 +2814,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__unit_price": {
         "id": "utility_accounts__unit_price",
@@ -1614,7 +2834,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,4)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__extra_charges_config": {
         "id": "utility_accounts__extra_charges_config",
@@ -1623,7 +2854,18 @@
         "comment": "",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 112,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__created_at": {
         "id": "utility_accounts__created_at",
@@ -1632,7 +2874,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_accounts__updated_at": {
         "id": "utility_accounts__updated_at",
@@ -1641,7 +2894,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__id": {
         "id": "meters__id",
@@ -1650,7 +2914,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__tenant_id": {
         "id": "meters__tenant_id",
@@ -1659,7 +2934,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__utility_account_id": {
         "id": "meters__utility_account_id",
@@ -1668,7 +2954,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 93,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__meter_number": {
         "id": "meters__meter_number",
@@ -1677,7 +2974,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 80,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__service_type": {
         "id": "meters__service_type",
@@ -1686,7 +2994,18 @@
         "comment": "",
         "dataType": "service_type",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 66,
+          "widthComment": 60,
+          "widthDataType": 66,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__status": {
         "id": "meters__status",
@@ -1695,7 +3014,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'active'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__installed_at": {
         "id": "meters__installed_at",
@@ -1704,7 +3034,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 61,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__replaced_at": {
         "id": "meters__replaced_at",
@@ -1713,7 +3054,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__created_at": {
         "id": "meters__created_at",
@@ -1722,7 +3074,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meters__updated_at": {
         "id": "meters__updated_at",
@@ -1731,7 +3094,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__id": {
         "id": "meter_readings__id",
@@ -1740,7 +3114,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__tenant_id": {
         "id": "meter_readings__tenant_id",
@@ -1749,7 +3134,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__meter_id": {
         "id": "meter_readings__meter_id",
@@ -1758,7 +3154,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__utility_account_id": {
         "id": "meter_readings__utility_account_id",
@@ -1767,7 +3174,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 93,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__reading_value": {
         "id": "meter_readings__reading_value",
@@ -1776,7 +3194,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 75,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__previous_reading_value": {
         "id": "meter_readings__previous_reading_value",
@@ -1785,7 +3214,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 125,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__reading_date": {
         "id": "meter_readings__reading_date",
@@ -1794,7 +3234,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__units_consumed": {
         "id": "meter_readings__units_consumed",
@@ -1803,7 +3254,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 88,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__status": {
         "id": "meter_readings__status",
@@ -1812,7 +3274,18 @@
         "comment": "",
         "dataType": "reading_status",
         "default": "'valid'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__recorded_by": {
         "id": "meter_readings__recorded_by",
@@ -1821,7 +3294,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 67,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__correction_of_id": {
         "id": "meter_readings__correction_of_id",
@@ -1830,7 +3314,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 2,
+          "widthName": 86,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__correction_reason": {
         "id": "meter_readings__correction_reason",
@@ -1839,7 +3334,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 96,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__notes": {
         "id": "meter_readings__notes",
@@ -1848,7 +3354,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__created_at": {
         "id": "meter_readings__created_at",
@@ -1857,7 +3374,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "meter_readings__updated_at": {
         "id": "meter_readings__updated_at",
@@ -1866,7 +3394,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__id": {
         "id": "utility_bills__id",
@@ -1875,7 +3414,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__tenant_id": {
         "id": "utility_bills__tenant_id",
@@ -1884,7 +3434,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__utility_account_id": {
         "id": "utility_bills__utility_account_id",
@@ -1893,7 +3454,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 93,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__property_id": {
         "id": "utility_bills__property_id",
@@ -1902,7 +3474,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__meter_reading_id": {
         "id": "utility_bills__meter_reading_id",
@@ -1911,7 +3494,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 93,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__service_type": {
         "id": "utility_bills__service_type",
@@ -1920,7 +3514,18 @@
         "comment": "",
         "dataType": "service_type",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 66,
+          "widthComment": 60,
+          "widthDataType": 66,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__period_start": {
         "id": "utility_bills__period_start",
@@ -1929,7 +3534,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 65,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__period_end": {
         "id": "utility_bills__period_end",
@@ -1938,7 +3554,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__previous_reading": {
         "id": "utility_bills__previous_reading",
@@ -1947,7 +3574,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 92,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__current_reading": {
         "id": "utility_bills__current_reading",
@@ -1956,7 +3594,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 85,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__units_consumed": {
         "id": "utility_bills__units_consumed",
@@ -1965,7 +3614,18 @@
         "comment": "",
         "dataType": "NUMERIC(14,3)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 88,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__unit_price": {
         "id": "utility_bills__unit_price",
@@ -1974,7 +3634,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,4)",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__extra_charges": {
         "id": "utility_bills__extra_charges",
@@ -1983,7 +3654,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "0",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 74,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__total_amount": {
         "id": "utility_bills__total_amount",
@@ -1992,7 +3674,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 72,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__amount_paid": {
         "id": "utility_bills__amount_paid",
@@ -2001,7 +3694,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "0",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__balance": {
         "id": "utility_bills__balance",
@@ -2010,7 +3714,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__due_date": {
         "id": "utility_bills__due_date",
@@ -2019,7 +3734,18 @@
         "comment": "",
         "dataType": "DATE",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__status": {
         "id": "utility_bills__status",
@@ -2028,16 +3754,38 @@
         "comment": "",
         "dataType": "bill_status",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__responsible_party_id": {
         "id": "utility_bills__responsible_party_id",
         "tableId": "utility_bills",
         "name": "responsible_party_id",
-        "comment": "snapshot — never rewrite",
+        "comment": "snapshot — never rewrite on move-out",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 110,
+          "widthComment": 210,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__responsible_party_role": {
         "id": "utility_bills__responsible_party_role",
@@ -2046,7 +3794,18 @@
         "comment": "renter|owner",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 120,
+          "widthComment": 70,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__occupancy_snapshot": {
         "id": "utility_bills__occupancy_snapshot",
@@ -2055,7 +3814,18 @@
         "comment": "",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 111,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__created_at": {
         "id": "utility_bills__created_at",
@@ -2064,7 +3834,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_bills__updated_at": {
         "id": "utility_bills__updated_at",
@@ -2073,7 +3854,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__id": {
         "id": "utility_payments__id",
@@ -2082,7 +3874,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__tenant_id": {
         "id": "utility_payments__tenant_id",
@@ -2091,7 +3894,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__utility_bill_id": {
         "id": "utility_payments__utility_bill_id",
@@ -2100,7 +3914,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 67,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__utility_account_id": {
         "id": "utility_payments__utility_account_id",
@@ -2109,7 +3934,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 93,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__payer_id": {
         "id": "utility_payments__payer_id",
@@ -2118,7 +3954,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__amount": {
         "id": "utility_payments__amount",
@@ -2127,7 +3974,18 @@
         "comment": "",
         "dataType": "NUMERIC(12,2)",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 83,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__currency": {
         "id": "utility_payments__currency",
@@ -2136,7 +3994,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "'USD'",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__method": {
         "id": "utility_payments__method",
@@ -2145,7 +4014,18 @@
         "comment": "",
         "dataType": "payment_method",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 95,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__reference": {
         "id": "utility_payments__reference",
@@ -2154,7 +4034,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__provider": {
         "id": "utility_payments__provider",
@@ -2163,7 +4054,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__provider_transaction_id": {
         "id": "utility_payments__provider_transaction_id",
@@ -2172,7 +4074,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 125,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__idempotency_key": {
         "id": "utility_payments__idempotency_key",
@@ -2181,7 +4094,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 94,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__proof_path": {
         "id": "utility_payments__proof_path",
@@ -2190,7 +4114,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__status": {
         "id": "utility_payments__status",
@@ -2199,7 +4134,18 @@
         "comment": "",
         "dataType": "payment_status",
         "default": "'pending'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 85,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__submitted_at": {
         "id": "utility_payments__submitted_at",
@@ -2208,7 +4154,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 71,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__reviewed_by": {
         "id": "utility_payments__reviewed_by",
@@ -2217,7 +4174,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 67,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__reviewed_at": {
         "id": "utility_payments__reviewed_at",
@@ -2226,7 +4194,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 65,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__rejection_reason": {
         "id": "utility_payments__rejection_reason",
@@ -2235,7 +4214,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 88,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__created_at": {
         "id": "utility_payments__created_at",
@@ -2244,7 +4234,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "utility_payments__updated_at": {
         "id": "utility_payments__updated_at",
@@ -2253,7 +4254,238 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__id": {
+        "id": "maintenance_requests__id",
+        "tableId": "maintenance_requests",
+        "name": "id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "gen_random_uuid()",
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__tenant_id": {
+        "id": "maintenance_requests__tenant_id",
+        "tableId": "maintenance_requests",
+        "name": "tenant_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__property_id": {
+        "id": "maintenance_requests__property_id",
+        "tableId": "maintenance_requests",
+        "name": "property_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__renter_id": {
+        "id": "maintenance_requests__renter_id",
+        "tableId": "maintenance_requests",
+        "name": "renter_id",
+        "comment": "",
+        "dataType": "UUID",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__category": {
+        "id": "maintenance_requests__category",
+        "tableId": "maintenance_requests",
+        "name": "category",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__urgency": {
+        "id": "maintenance_requests__urgency",
+        "tableId": "maintenance_requests",
+        "name": "urgency",
+        "comment": "",
+        "dataType": "urgency",
+        "default": "'medium'",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__description": {
+        "id": "maintenance_requests__description",
+        "tableId": "maintenance_requests",
+        "name": "description",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 61,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__photo_path": {
+        "id": "maintenance_requests__photo_path",
+        "tableId": "maintenance_requests",
+        "name": "photo_path",
+        "comment": "",
+        "dataType": "TEXT",
+        "default": "",
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__status": {
+        "id": "maintenance_requests__status",
+        "tableId": "maintenance_requests",
+        "name": "status",
+        "comment": "",
+        "dataType": "maintenance_status",
+        "default": "'pending'",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 106,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__created_at": {
+        "id": "maintenance_requests__created_at",
+        "tableId": "maintenance_requests",
+        "name": "created_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
+      },
+      "maintenance_requests__updated_at": {
+        "id": "maintenance_requests__updated_at",
+        "tableId": "maintenance_requests",
+        "name": "updated_at",
+        "comment": "",
+        "dataType": "TIMESTAMPTZ",
+        "default": "now()",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 62,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__id": {
         "id": "notifications__id",
@@ -2262,7 +4494,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__tenant_id": {
         "id": "notifications__tenant_id",
@@ -2271,7 +4514,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__recipient_id": {
         "id": "notifications__recipient_id",
@@ -2280,7 +4534,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 63,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__event_type": {
         "id": "notifications__event_type",
@@ -2289,7 +4554,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__channel": {
         "id": "notifications__channel",
@@ -2298,7 +4574,18 @@
         "comment": "",
         "dataType": "notification_channel",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 108,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__title": {
         "id": "notifications__title",
@@ -2307,7 +4594,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__body": {
         "id": "notifications__body",
@@ -2316,7 +4614,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__link_path": {
         "id": "notifications__link_path",
@@ -2325,7 +4634,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__delivery_status": {
         "id": "notifications__delivery_status",
@@ -2334,7 +4654,18 @@
         "comment": "",
         "dataType": "delivery_status",
         "default": "'pending'",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 79,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__created_at": {
         "id": "notifications__created_at",
@@ -2343,7 +4674,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "notifications__read_at": {
         "id": "notifications__read_at",
@@ -2352,7 +4694,18 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__id": {
         "id": "audit_logs__id",
@@ -2361,7 +4714,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "gen_random_uuid()",
-        "options": 10
+        "options": 10,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 104
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__tenant_id": {
         "id": "audit_logs__tenant_id",
@@ -2370,7 +4734,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__actor_id": {
         "id": "audit_logs__actor_id",
@@ -2379,7 +4754,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 2,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__action": {
         "id": "audit_logs__action",
@@ -2388,7 +4774,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__entity_type": {
         "id": "audit_logs__entity_type",
@@ -2397,7 +4794,18 @@
         "comment": "",
         "dataType": "TEXT",
         "default": "",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__entity_id": {
         "id": "audit_logs__entity_id",
@@ -2406,7 +4814,18 @@
         "comment": "",
         "dataType": "UUID",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__metadata": {
         "id": "audit_logs__metadata",
@@ -2415,7 +4834,18 @@
         "comment": "",
         "dataType": "JSONB",
         "default": "",
-        "options": 0
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       },
       "audit_logs__created_at": {
         "id": "audit_logs__created_at",
@@ -2424,494 +4854,775 @@
         "comment": "",
         "dataType": "TIMESTAMPTZ",
         "default": "now()",
-        "options": 8
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 79,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
+        }
       }
     },
     "relationshipEntities": {
       "rel_tm_tenant": {
         "id": "rel_tm_tenant",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "tenants",
           "columnIds": [
             "tenants__id"
-          ]
+          ],
+          "x": 596.5789,
+          "y": -172.7895,
+          "direction": 2
         },
         "end": {
           "tableId": "tenant_memberships",
           "columnIds": [
             "tenant_memberships__tenant_id"
-          ]
+          ],
+          "x": 2444.2105,
+          "y": -385.9999,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_tm_user": {
         "id": "rel_tm_user",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1110.6052,
+          "direction": 2
         },
         "end": {
           "tableId": "tenant_memberships",
           "columnIds": [
             "tenant_memberships__user_id"
-          ]
+          ],
+          "x": 2444.2105,
+          "y": -496.9999,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_tm_invited": {
         "id": "rel_tm_invited",
+        "identification": false,
         "relationshipType": 4,
-        "onDelete": 8,
-        "onUpdate": 4,
+        "startRelationshipType": 1,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1135.3552,
+          "direction": 2
         },
         "end": {
           "tableId": "tenant_memberships",
           "columnIds": [
             "tenant_memberships__invited_by"
-          ]
+          ],
+          "x": 2444.2105,
+          "y": -607.9999,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_prop_tenant": {
         "id": "rel_prop_tenant",
+        "identification": false,
         "relationshipType": 4,
-        "onDelete": 8,
-        "onUpdate": 4,
+        "startRelationshipType": 1,
         "start": {
           "tableId": "tenants",
           "columnIds": [
             "tenants__id"
-          ]
+          ],
+          "x": 51.5789,
+          "y": -172.7895,
+          "direction": 1
         },
         "end": {
           "tableId": "properties",
           "columnIds": [
             "properties__tenant_id"
-          ]
+          ],
+          "x": -47.86840000000001,
+          "y": 162.1051,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_prop_owner": {
         "id": "rel_prop_owner",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -277.5263,
+          "y": -950.1052,
+          "direction": 8
         },
         "end": {
           "tableId": "properties",
           "columnIds": [
             "properties__owner_id"
-          ]
+          ],
+          "x": -167.8684,
+          "y": 162.1051,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_prop_renter": {
         "id": "rel_prop_renter",
+        "identification": false,
         "relationshipType": 4,
-        "onDelete": 8,
-        "onUpdate": 4,
+        "startRelationshipType": 1,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -397.5263,
+          "y": -950.1052,
+          "direction": 8
         },
         "end": {
           "tableId": "properties",
           "columnIds": [
             "properties__current_renter_id"
-          ]
+          ],
+          "x": -287.8684,
+          "y": 162.1051,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_photo_prop": {
         "id": "rel_photo_prop",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 4,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "properties",
           "columnIds": [
             "properties__id"
-          ]
+          ],
+          "x": -107.86840000000001,
+          "y": 672.1051,
+          "direction": 8
         },
         "end": {
           "tableId": "property_photos",
           "columnIds": [
             "property_photos__property_id"
-          ]
+          ],
+          "x": 80,
+          "y": 907,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ra_prop": {
         "id": "rel_ra_prop",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "properties",
           "columnIds": [
             "properties__id"
-          ]
+          ],
+          "x": 131.6316,
+          "y": 477.1051,
+          "direction": 2
         },
         "end": {
           "tableId": "rental_assignments",
           "columnIds": [
             "rental_assignments__property_id"
-          ]
+          ],
+          "x": 713.75,
+          "y": 553,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ra_tenant": {
         "id": "rel_ra_tenant",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "tenants",
           "columnIds": [
             "tenants__id"
-          ]
+          ],
+          "x": 596.5789,
+          "y": -52.789500000000004,
+          "direction": 2
         },
         "end": {
           "tableId": "rental_assignments",
           "columnIds": [
             "rental_assignments__tenant_id"
-          ]
+          ],
+          "x": 848.75,
+          "y": 370,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ra_landlord": {
         "id": "rel_ra_landlord",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -986.8552,
+          "direction": 2
         },
         "end": {
           "tableId": "rental_assignments",
           "columnIds": [
             "rental_assignments__landlord_id"
-          ]
+          ],
+          "x": 1088.75,
+          "y": 370,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ra_renter": {
         "id": "rel_ra_renter",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -962.1052,
+          "direction": 2
         },
         "end": {
           "tableId": "rental_assignments",
           "columnIds": [
             "rental_assignments__renter_id"
-          ]
+          ],
+          "x": 968.75,
+          "y": 370,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_rc_assign": {
         "id": "rel_rc_assign",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "rental_assignments",
           "columnIds": [
             "rental_assignments__id"
-          ]
+          ],
+          "x": 1223.75,
+          "y": 553,
+          "direction": 2
         },
         "end": {
           "tableId": "rent_charges",
           "columnIds": [
             "rent_charges__assignment_id"
-          ]
+          ],
+          "x": 1147.0301,
+          "y": 710.7068,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_rp_charge": {
         "id": "rel_rp_charge",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "rent_charges",
           "columnIds": [
             "rent_charges__id"
-          ]
+          ],
+          "x": 1649.0301,
+          "y": 710.7068,
+          "direction": 2
         },
         "end": {
           "tableId": "rent_payments",
           "columnIds": [
             "rent_payments__rent_charge_id"
-          ]
+          ],
+          "x": 3321.0526,
+          "y": 557.5264,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_rp_payer": {
         "id": "rel_rp_payer",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1061.1052,
+          "direction": 2
         },
         "end": {
           "tableId": "rent_payments",
           "columnIds": [
             "rent_payments__payer_id"
-          ]
+          ],
+          "x": 3321.0526,
+          "y": 437.52639999999997,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ua_tenant": {
         "id": "rel_ua_tenant",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "tenants",
           "columnIds": [
             "tenants__id"
-          ]
+          ],
+          "x": 51.5789,
+          "y": -52.789500000000004,
+          "direction": 1
         },
         "end": {
           "tableId": "utility_accounts",
           "columnIds": [
             "utility_accounts__tenant_id"
-          ]
+          ],
+          "x": -622.0262,
+          "y": 1749.4737,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ua_prop": {
         "id": "rel_ua_prop",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "properties",
           "columnIds": [
             "properties__id"
-          ]
+          ],
+          "x": -227.8684,
+          "y": 672.1051,
+          "direction": 8
         },
         "end": {
           "tableId": "utility_accounts",
           "columnIds": [
             "utility_accounts__property_id"
-          ]
+          ],
+          "x": -742.0262,
+          "y": 1749.4737,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_ua_cust": {
         "id": "rel_ua_cust",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -517.5263,
+          "y": -950.1052,
+          "direction": 8
         },
         "end": {
           "tableId": "utility_accounts",
           "columnIds": [
             "utility_accounts__customer_id"
-          ]
+          ],
+          "x": -862.0262,
+          "y": 1749.4737,
+          "direction": 4
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_meter_ua": {
         "id": "rel_meter_ua",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 4,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "utility_accounts",
           "columnIds": [
             "utility_accounts__id"
-          ]
+          ],
+          "x": -443.5262,
+          "y": 1860.4737,
+          "direction": 2
         },
         "end": {
           "tableId": "meters",
           "columnIds": [
             "meters__utility_account_id"
-          ]
+          ],
+          "x": 420,
+          "y": 1235,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_mr_meter": {
         "id": "rel_mr_meter",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "meters",
           "columnIds": [
             "meters__id"
-          ]
+          ],
+          "x": 934,
+          "y": 1235,
+          "direction": 2
         },
         "end": {
           "tableId": "meter_readings",
           "columnIds": [
             "meter_readings__meter_id"
-          ]
+          ],
+          "x": 1417.5188,
+          "y": 1401.3911,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397764,
+          "createAt": 1791726397764
         }
       },
       "rel_mr_corr": {
         "id": "rel_mr_corr",
+        "identification": false,
         "relationshipType": 4,
-        "onDelete": 8,
-        "onUpdate": 4,
+        "startRelationshipType": 1,
         "start": {
           "tableId": "meter_readings",
           "columnIds": [
             "meter_readings__id"
-          ]
+          ],
+          "x": 1909.0188,
+          "y": 1206.3911,
+          "direction": 4
         },
         "end": {
           "tableId": "meter_readings",
           "columnIds": [
             "meter_readings__correction_of_id"
-          ]
+          ],
+          "x": 1967.5188,
+          "y": 1264.8911,
+          "direction": 2
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_ub_ua": {
         "id": "rel_ub_ua",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "utility_accounts",
           "columnIds": [
             "utility_accounts__id"
-          ]
+          ],
+          "x": -443.5262,
+          "y": 1980.4737,
+          "direction": 2
         },
         "end": {
           "tableId": "utility_bills",
           "columnIds": [
             "utility_bills__utility_account_id"
-          ]
+          ],
+          "x": 2368.421,
+          "y": 1272.0526,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_ub_resp": {
         "id": "rel_ub_resp",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1011.6052,
+          "direction": 2
         },
         "end": {
           "tableId": "utility_bills",
           "columnIds": [
             "utility_bills__responsible_party_id"
-          ]
+          ],
+          "x": 2368.421,
+          "y": 1152.0526,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_up_bill": {
         "id": "rel_up_bill",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "utility_bills",
           "columnIds": [
             "utility_bills__id"
-          ]
+          ],
+          "x": 2973.421,
+          "y": 1212.0526,
+          "direction": 2
         },
         "end": {
           "tableId": "utility_payments",
           "columnIds": [
             "utility_payments__utility_bill_id"
-          ]
+          ],
+          "x": 3129.4736,
+          "y": 1212.8946999999998,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_maint_prop": {
         "id": "rel_maint_prop",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "properties",
           "columnIds": [
             "properties__id"
-          ]
+          ],
+          "x": 131.6316,
+          "y": 357.1051,
+          "direction": 2
         },
         "end": {
           "tableId": "maintenance_requests",
           "columnIds": [
             "maintenance_requests__property_id"
-          ]
+          ],
+          "x": 1971.5789,
+          "y": -30.894800000000004,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_maint_renter": {
         "id": "rel_maint_renter",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1085.8552,
+          "direction": 2
         },
         "end": {
           "tableId": "maintenance_requests",
           "columnIds": [
             "maintenance_requests__renter_id"
-          ]
+          ],
+          "x": 1971.5789,
+          "y": -150.8948,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_notif_recip": {
         "id": "rel_notif_recip",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1160.1052,
+          "direction": 2
         },
         "end": {
           "tableId": "notifications",
           "columnIds": [
             "notifications__recipient_id"
-          ]
+          ],
+          "x": 2261.0526,
+          "y": -794.0526,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
       "rel_audit_actor": {
         "id": "rel_audit_actor",
+        "identification": false,
         "relationshipType": 16,
-        "onDelete": 32,
-        "onUpdate": 4,
+        "startRelationshipType": 2,
         "start": {
           "tableId": "profiles",
           "columnIds": [
             "profiles__id"
-          ]
+          ],
+          "x": -124.52629999999999,
+          "y": -1036.3552,
+          "direction": 2
         },
         "end": {
           "tableId": "audit_logs",
           "columnIds": [
             "audit_logs__actor_id"
-          ]
+          ],
+          "x": 2616.8421,
+          "y": 217.3157,
+          "direction": 1
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       }
     },
@@ -2924,7 +5635,12 @@
           "idx_tm_tenant_user__tenant_id",
           "idx_tm_tenant_user__user_id"
         ],
-        "unique": true
+        "seqIndexColumnIds": [],
+        "unique": true,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_ua_acct": {
         "id": "idx_ua_acct",
@@ -2934,7 +5650,12 @@
           "idx_ua_acct__tenant_id",
           "idx_ua_acct__account_number"
         ],
-        "unique": true
+        "seqIndexColumnIds": [],
+        "unique": true,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_meter_num": {
         "id": "idx_meter_num",
@@ -2944,7 +5665,12 @@
           "idx_meter_num__tenant_id",
           "idx_meter_num__meter_number"
         ],
-        "unique": true
+        "seqIndexColumnIds": [],
+        "unique": true,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_rp_provider": {
         "id": "idx_rp_provider",
@@ -2953,7 +5679,12 @@
         "indexColumnIds": [
           "idx_rp_provider__provider_transaction_id"
         ],
-        "unique": true
+        "seqIndexColumnIds": [],
+        "unique": true,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_up_provider": {
         "id": "idx_up_provider",
@@ -2962,7 +5693,12 @@
         "indexColumnIds": [
           "idx_up_provider__provider_transaction_id"
         ],
-        "unique": true
+        "seqIndexColumnIds": [],
+        "unique": true,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       }
     },
     "indexColumnEntities": {
@@ -2970,140 +5706,114 @@
         "id": "idx_tm_tenant_user__tenant_id",
         "indexId": "idx_tm_tenant_user",
         "columnId": "tenant_memberships__tenant_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_tm_tenant_user__user_id": {
         "id": "idx_tm_tenant_user__user_id",
         "indexId": "idx_tm_tenant_user",
         "columnId": "tenant_memberships__user_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_ua_acct__tenant_id": {
         "id": "idx_ua_acct__tenant_id",
         "indexId": "idx_ua_acct",
         "columnId": "utility_accounts__tenant_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_ua_acct__account_number": {
         "id": "idx_ua_acct__account_number",
         "indexId": "idx_ua_acct",
         "columnId": "utility_accounts__account_number",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_meter_num__tenant_id": {
         "id": "idx_meter_num__tenant_id",
         "indexId": "idx_meter_num",
         "columnId": "meters__tenant_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_meter_num__meter_number": {
         "id": "idx_meter_num__meter_number",
         "indexId": "idx_meter_num",
         "columnId": "meters__meter_number",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_rp_provider__provider_transaction_id": {
         "id": "idx_rp_provider__provider_transaction_id",
         "indexId": "idx_rp_provider",
         "columnId": "rent_payments__provider_transaction_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       },
       "idx_up_provider__provider_transaction_id": {
         "id": "idx_up_provider__provider_transaction_id",
         "indexId": "idx_up_provider",
         "columnId": "utility_payments__provider_transaction_id",
-        "orderType": 1
+        "orderType": 1,
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
+        }
       }
     },
     "memoEntities": {
-      "memo_flow": {
-        "id": "memo_flow",
-        "value": "IJAARO multi-tenant flow (like SaaS lanes)\n\n1) ijaaro.com landing\n2) Register tenant → provisioning\n3) slug.ijaaro.com login\n   • Landlord: admin / staff / renter\n   • Water Co: admin / staff / customer\n   • Electricity Co: admin / staff / customer\n\nIsolation: tenant_id + RLS\nApprovals never cross tenant type",
+      "memo_security": {
+        "id": "memo_security",
+        "value": "IJAARO DB (Supabase/PostgreSQL + RLS)\n\nStack: React + Tailwind + shadcn/ui + Supabase\n\nSecurity:\n• tenant_id on scoped tables\n• RLS default-deny\n• Rent approve = landlord only\n• Utility approve = same company tenant\n• responsible_party_id is immutable snapshot\n• No duplicate properties on utility link",
         "ui": {
-          "x": 420,
-          "y": 160,
-          "width": 360,
+          "x": 1780,
+          "y": 360,
+          "zIndex": 2,
+          "width": 320,
           "height": 280,
           "color": "#fef3c7"
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       },
-      "memo_roles_landlord": {
-        "id": "memo_roles_landlord",
-        "value": "LANDLORD LOGIN ROLES\n• landlord_admin\n• landlord_staff\n• renter\n\nApproves: RENT only",
+      "memo_chain": {
+        "id": "memo_chain",
+        "value": "Canonical chain:\nProperty → Assignment → Rent Charge → Rent Payment\nProperty → Utility Account → Meter → Reading → Bill → Utility Payment",
         "ui": {
-          "x": 1960,
-          "y": 720,
-          "width": 160,
+          "x": 1780,
+          "y": 680,
+          "zIndex": 2,
+          "width": 320,
           "height": 160,
-          "color": "#d1fae5"
-        }
-      },
-      "memo_roles_utility": {
-        "id": "memo_roles_utility",
-        "value": "UTILITY LOGIN ROLES\n• utility_admin\n• utility_staff\n• utility_customer\n\nApproves: OWN service only\n(water≠electricity)",
-        "ui": {
-          "x": 2260,
-          "y": 1580,
-          "width": 200,
-          "height": 180,
-          "color": "#ffedd5"
-        }
-      }
-    },
-    "tableGroupEntities": {
-      "grp_platform": {
-        "id": "grp_platform",
-        "name": "1. PLATFORM & AUTH\n(ijaaro.com landing → login)",
-        "color": "#1e3a8a",
-        "ui": {
-          "x": 40,
-          "y": 40,
-          "width": 1180,
-          "height": 520
-        }
-      },
-      "grp_provision": {
-        "id": "grp_provision",
-        "name": "2. TENANT PROVISIONING\n(register landlord / water / electricity)",
-        "color": "#5b21b6",
-        "ui": {
-          "x": 1280,
-          "y": 40,
-          "width": 900,
-          "height": 520
-        }
-      },
-      "grp_landlord": {
-        "id": "grp_landlord",
-        "name": "3A. LANDLORD TENANT\nslug.ijaaro.com  |  roles: landlord_admin · landlord_staff · renter",
-        "color": "#065f46",
-        "ui": {
-          "x": 40,
-          "y": 620,
-          "width": 2100,
-          "height": 780
-        }
-      },
-      "grp_utility": {
-        "id": "grp_utility",
-        "name": "3B. UTILITY COMPANY TENANT\nwater|electricity.ijaaro.com  |  roles: utility_admin · utility_staff · utility_customer",
-        "color": "#9a3412",
-        "ui": {
-          "x": 40,
-          "y": 1480,
-          "width": 2500,
-          "height": 900
-        }
-      },
-      "grp_cross": {
-        "id": "grp_cross",
-        "name": "4. CROSS-CUTTING\n(notifications · audit — tenant scoped)",
-        "color": "#334155",
-        "ui": {
-          "x": 2200,
-          "y": 40,
-          "width": 720,
-          "height": 520
+          "color": "#e0e7ff"
+        },
+        "meta": {
+          "updateAt": 1791726397765,
+          "createAt": 1791726397765
         }
       }
     }

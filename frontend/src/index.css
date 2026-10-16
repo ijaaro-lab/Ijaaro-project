@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (ThemeProvider toggles html.dark) — not prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-navy: #0b1f3a;
+  --color-brand-green: #1fa85a;
+  --color-brand-water: #2b8cff;
+  --color-brand-power: #f5c400;
+  --color-brand-blue: #1677c8;
+
+  --color-background: #f5f8fc;
+  --color-foreground: #0b1f3a;
+  --color-card: #ffffff;
+  --color-muted: #eef3f8;
+  --color-muted-foreground: #5b6b7c;
+  --color-border: #d0dce8;
+  --color-primary: #0b1f3a;
+  --color-secondary: #1fa85a;
+  --color-destructive: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #1677c8;
+  --color-ring: #2b8cff;
+  --color-sidebar: #0b1f3a;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html.dark {
+    --color-background: #0a1524;
+    --color-foreground: #e8eef6;
+    --color-card: #122033;
+    --color-muted: #1a2b40;
+    --color-muted-foreground: #a8b8cc;
+    --color-border: #2a3f58;
+    --color-primary: #1677c8;
+    --color-ring: #2b8cff;
+    --color-sidebar: #061018;
+  }
+
+  html.dark ::selection {
+    background: color-mix(in srgb, var(--color-brand-water) 45%, transparent);
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-brand-water) 35%, white);
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  /* Continuous marquee: content moves toward the right. */
+  @keyframes marquee-right {
+    from {
+      transform: translateX(-50%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-marquee-right {
+    animation: marquee-right 38s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee-right {
+      animation: none;
+      transform: translateX(0);
+    }
+  }
+}
