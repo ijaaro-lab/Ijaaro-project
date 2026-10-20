@@ -498,6 +498,25 @@ export type Database = {
         Args: { p_tenant_id: string; p_status: TenantStatus };
         Returns: Tenant;
       };
+      update_tenant: {
+        Args: {
+          p_tenant_id: string;
+          p_name?: string | null;
+          p_slug?: string | null;
+          p_subdomain?: string | null;
+          p_status?: TenantStatus | null;
+        };
+        Returns: Tenant;
+      };
+      delete_tenant: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          id: string;
+          name: string;
+          slug: string;
+          tenant_type: TenantType;
+        };
+      };
       manage_membership: {
         Args: {
           p_tenant_id: string;
@@ -668,6 +687,43 @@ export type Database = {
           p_rejection_reason?: string | null;
         };
         Returns: { payment: UtilityPayment; bill: UtilityBill };
+      };
+      register_utility_payment_by_ops: {
+        Args: {
+          p_utility_bill_id: string;
+          p_amount: number;
+          p_method: PaymentMethod;
+          p_reference?: string | null;
+          p_proof_path?: string | null;
+          p_idempotency_key?: string | null;
+        };
+        Returns: UtilityPayment;
+      };
+      adjust_utility_bill_by_ops: {
+        Args: {
+          p_utility_bill_id: string;
+          p_total_amount?: number | null;
+          p_cancel?: boolean;
+        };
+        Returns: UtilityBill;
+      };
+      update_utility_customer_by_ops: {
+        Args: {
+          p_utility_account_id: string;
+          p_name?: string | null;
+          p_address_line?: string | null;
+          p_district?: string | null;
+          p_city?: string | null;
+          p_contact_phone?: string | null;
+          p_contact_email?: string | null;
+          p_account_number?: string | null;
+          p_monthly_amount?: number | null;
+        };
+        Returns: Record<string, unknown>;
+      };
+      deactivate_utility_account_by_admin: {
+        Args: { p_utility_account_id: string };
+        Returns: UtilityAccount;
       };
     };
   };

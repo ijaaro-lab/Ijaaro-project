@@ -7,6 +7,7 @@ import {
 } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/components/layout/AppShell";
 import { TenantSlugSync } from "@/components/TenantSlugSync";
+import { AppLoading } from "@/components/ui/app-loading";
 import { workspaceAppHomePath } from "@/lib/roles";
 import { resolveTenantKeyFromLocation } from "@/lib/tenant";
 import { LandingPage } from "@/pages/LandingPage";
@@ -57,11 +58,7 @@ function HomeEntry() {
   const tenantSlug = resolveTenantKeyFromLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading…
-      </div>
-    );
+    return <AppLoading />;
   }
 
   // Workspace portal: `/?tenant=<slug>` or `slug.localhost` / `slug.<base>`.

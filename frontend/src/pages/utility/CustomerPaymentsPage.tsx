@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/auth/AuthProvider";
+import { AppLoading } from "@/components/ui/app-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
-import { money, statusTone } from "@/lib/format";
+import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import type { PaymentMethod, UtilityBill, UtilityPayment } from "@/types/database";
 import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
 
@@ -16,7 +17,9 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isCustomer = activeMembership?.role === "utility_customer";
   const label = KIND_LABEL[kind];
+  const simplifiedWater = kind === "water";
 
+  const [loading, setLoading] = useState(true);
   const [bills, setBills] = useState<UtilityBill[]>([]);
   const [payments, setPayments] = useState<UtilityPayment[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,11 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
   });
 
   const load = async () => {
-    if (!tenantId || !user) return;
+    if (!tenantId || !user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const { data: accounts, error: accErr } = await supabase
       .from("utility_accounts")
       .select("id")
@@ -39,6 +46,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
       .eq("customer_id", user.id);
     if (accErr) {
       setError(accErr.message);
+      setLoading(false);
       return;
     }
     const accountIds = (accounts ?? []).map((a) => a.id);
@@ -51,6 +59,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
     ]);
     if (byAccount.error || byResp.error || payRes.error) {
       setError(byAccount.error?.message || byResp.error?.message || payRes.error?.message || "Failed to load");
+      setLoading(false);
       return;
     }
     const merged = new Map<string, UtilityBill>();
@@ -62,6 +71,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
     if (!form.utility_bill_id && dueBills.length > 0) {
       setForm((f) => ({ ...f, utility_bill_id: dueBills[0].id, amount: String(dueBills[0].balance) }));
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -82,6 +92,9 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
         This page is for utility customer accounts.
       </div>
     );
+  }
+  if (loading) {
+    return <AppLoading message="Loading…" fullScreen={false} />;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -155,9 +168,13 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-2xl font-bold">My {label.toLowerCase()} payments</h2>
+        <h2 className="font-display text-2xl font-bold">
+          {simplifiedWater ? "Payments" : `My ${label.toLowerCase()} payments`}
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Submissions start as pending. Only the utility company can approve or reject them.
+          {simplifiedWater
+            ? "Track Pending, Approved, and Rejected payments for your account."
+            : "Submissions start as pending. Only the utility company can approve or reject them."}
         </p>
       </div>
 
@@ -239,7 +256,9 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
                 <div className="text-muted-foreground">{new Date(p.submitted_at).toLocaleString()}</div>
                 {p.rejection_reason && <div className="text-red-700">Rejected: {p.rejection_reason}</div>}
               </div>
-              <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+              <Badge tone={statusTone(p.status)}>
+                {simplifiedWater ? paymentStatusLabel(p.status) : p.status}
+              </Badge>
             </li>
           ))}
           {payments.length === 0 && <li className="py-8 text-sm text-muted-foreground">No submissions yet.</li>}

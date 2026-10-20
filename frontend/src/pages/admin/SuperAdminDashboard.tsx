@@ -89,6 +89,13 @@ const OPS_LINKS: {
   accent: string;
 }[] = [
   {
+    to: "/app/admin/tenants",
+    label: "Tenants",
+    description: "Create, edit, delete",
+    icon: Shield,
+    accent: "bg-brand-green/15 text-brand-green dark:text-emerald-300",
+  },
+  {
     to: "/app/admin/properties",
     label: "Properties",
     description: "Landlord inventory",
@@ -285,7 +292,7 @@ export function SuperAdminDashboard() {
             </p>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {OPS_LINKS.map((item) => (
             <Link
               key={item.to}

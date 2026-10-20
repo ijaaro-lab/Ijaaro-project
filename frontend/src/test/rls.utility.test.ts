@@ -62,6 +62,7 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
 
     await make("waA", "Water Admin A");
     await make("waB", "Water Admin B");
+    await make("wsA", "Water Staff A");
     await make("elA", "Elec Admin A");
     await make("elB", "Elec Admin B");
     await make("custA", "Customer A");
@@ -98,6 +99,14 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
 
     await insertTenant("waterA", "water_company", "waA", "utility_admin");
     await insertTenant("waterB", "water_company", "waB", "utility_admin");
+
+    const { error: staffMemErr } = await admin.from("tenant_memberships").insert({
+      tenant_id: ids.tenant_waterA,
+      user_id: ids.wsA,
+      role: "utility_staff",
+      status: "active",
+    });
+    if (staffMemErr) throw staffMemErr;
     await insertTenant("elecA", "electricity_company", "elA", "utility_admin");
     await insertTenant("elecB", "electricity_company", "elB", "utility_admin");
     await insertTenant("landlordA", "landlord", "llA", "landlord_admin");
@@ -742,4 +751,69 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
     expect(data.account.account_number).toBe(`LINK-${suffix}`);
     expect(data.meter.meter_number).toBe(`MLINK-${suffix}`);
   });
+
+  it(
+    "19. utility_staff can register pending payment but cannot approve",
+    async () => {
+      const wa = await asUser(emails.waA, password);
+      const { data: reg, error: regErr } = await wa.rpc("register_utility_house", {
+        p_company_tenant_id: ids.tenant_waterA,
+        p_address_line: `Staff Pay St ${suffix}`,
+        p_account_number: `STAFFPAY-${suffix}`,
+        p_monthly_amount: 40,
+        p_customer_email: emails.custA,
+        p_property_type: "house",
+      });
+      expect(regErr).toBeNull();
+
+      const { data: bill, error: billErr } = await wa.rpc("generate_flat_utility_bill", {
+        p_utility_account_id: reg.account.id,
+        p_period_start: "2026-10-01",
+        p_period_end: "2026-10-31",
+        p_due_date: null,
+      });
+      expect(billErr).toBeNull();
+      ids.staffPayBill = bill.id;
+
+      const staff = await asUser(emails.wsA, password);
+      const { data: registered, error: regPayErr } = await staff.rpc(
+        "register_utility_payment_by_ops",
+        {
+          p_utility_bill_id: ids.staffPayBill,
+          p_amount: 20,
+          p_method: "mobile_money",
+          p_reference: `ops-${suffix}`,
+        },
+      );
+      expect(regPayErr).toBeNull();
+      expect(registered.status).toBe("pending");
+      expect(registered.payer_id).toBe(ids.custA);
+      ids.staffRegisteredPay = registered.id;
+
+      // Staff must NOT be able to approve
+      const { error: approveErr } = await staff.rpc("review_utility_payment", {
+        p_payment_id: ids.staffRegisteredPay,
+        p_decision: "approve",
+      });
+      expect(approveErr).toBeTruthy();
+
+      // Cross-tenant admin cannot register on another company's bill
+      const otherAdmin = await asUser(emails.waB, password);
+      const { error: crossErr } = await otherAdmin.rpc("register_utility_payment_by_ops", {
+        p_utility_bill_id: ids.staffPayBill,
+        p_amount: 5,
+        p_method: "cash",
+      });
+      expect(crossErr).toBeTruthy();
+
+      // Admin can approve the staff-registered payment
+      const { data: reviewed, error: ok } = await wa.rpc("review_utility_payment", {
+        p_payment_id: ids.staffRegisteredPay,
+        p_decision: "approve",
+      });
+      expect(ok).toBeNull();
+      expect(reviewed.payment.status).toBe("paid");
+    },
+    30_000,
+  );
 });

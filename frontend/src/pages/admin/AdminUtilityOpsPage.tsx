@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ChevronLeft,
+  ChevronRight,
   Droplets,
   ExternalLink,
   Gauge,
   Landmark,
+  Search,
   Wallet,
   Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
-import { money, statusTone } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { money } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import { tenantSubdomainLabel, tenantWorkspaceUrl } from "@/lib/tenant";
-import type {
-  Meter,
-  UtilityAccount,
-  UtilityAccountStatus,
-  UtilityBill,
-} from "@/types/database";
 import type { UtilityKind } from "@/pages/utility/shared";
 import {
   AdminEmpty,
@@ -28,17 +26,12 @@ import {
   AdminPageHeader,
   AdminSectionTitle,
   AdminTableCard,
-  TENANT_EMBED,
   adminTableHeadClass,
-  filterSelectClassName,
   statusBadgeTone,
-  type TenantRef,
   type WorkspaceTenant,
 } from "./shared";
 
-type AccountRow = UtilityAccount & { tenants: TenantRef | null };
-type MeterRow = Meter & { tenants: TenantRef | null };
-type BillRow = UtilityBill & { tenants: TenantRef | null };
+const PAGE_SIZE = 10;
 
 const KIND_CONFIG = {
   water: {
@@ -60,14 +53,16 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
   const KindIcon = config.icon;
   const [workspaces, setWorkspaces] = useState<WorkspaceTenant[]>([]);
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
-  const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [meters, setMeters] = useState<MeterRow[]>([]);
-  const [bills, setBills] = useState<BillRow[]>([]);
+  const [accountCounts, setAccountCounts] = useState<Record<string, number>>({});
+  const [meterCounts, setMeterCounts] = useState<Record<string, number>>({});
+  const [accountTotal, setAccountTotal] = useState(0);
+  const [meterTotal, setMeterTotal] = useState(0);
+  const [billCount, setBillCount] = useState(0);
+  const [outstanding, setOutstanding] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | UtilityAccountStatus>(
-    "all",
-  );
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,22 +79,19 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
         .eq("status", "active"),
       supabase
         .from("utility_accounts")
-        .select(`*, ${TENANT_EMBED}`)
+        .select("id, tenant_id")
         .eq("service_type", kind)
-        .order("created_at", { ascending: false })
-        .limit(150),
+        .limit(500),
       supabase
         .from("meters")
-        .select(`*, ${TENANT_EMBED}`)
+        .select("id, tenant_id")
         .eq("service_type", kind)
-        .order("created_at", { ascending: false })
-        .limit(150),
+        .limit(500),
       supabase
         .from("utility_bills")
-        .select(`*, ${TENANT_EMBED}`)
+        .select("id, balance")
         .eq("service_type", kind)
-        .order("created_at", { ascending: false })
-        .limit(100),
+        .limit(500),
     ]);
 
     const err =
@@ -116,9 +108,24 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
       counts[row.tenant_id] = (counts[row.tenant_id] ?? 0) + 1;
     }
     setMemberCounts(counts);
-    setAccounts((a.data as AccountRow[] | null) ?? []);
-    setMeters((m.data as MeterRow[] | null) ?? []);
-    setBills((b.data as BillRow[] | null) ?? []);
+
+    const ac: Record<string, number> = {};
+    for (const row of a.data ?? []) {
+      ac[row.tenant_id] = (ac[row.tenant_id] ?? 0) + 1;
+    }
+    setAccountCounts(ac);
+    setAccountTotal((a.data ?? []).length);
+
+    const mc: Record<string, number> = {};
+    for (const row of m.data ?? []) {
+      mc[row.tenant_id] = (mc[row.tenant_id] ?? 0) + 1;
+    }
+    setMeterCounts(mc);
+    setMeterTotal((m.data ?? []).length);
+
+    const bills = b.data ?? [];
+    setBillCount(bills.length);
+    setOutstanding(bills.reduce((s, bil) => s + Number(bil.balance || 0), 0));
     setLoading(false);
   }, [kind, config.tenantType]);
 
@@ -126,56 +133,32 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
     void load();
   }, [load]);
 
-  const accountsByTenant = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const a of accounts) {
-      map[a.tenant_id] = (map[a.tenant_id] ?? 0) + 1;
-    }
-    return map;
-  }, [accounts]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workspaces;
+    return workspaces.filter((t) => {
+      const hay = `${t.name} ${t.slug} ${t.subdomain ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [workspaces, search]);
 
-  const metersByTenant = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const m of meters) {
-      map[m.tenant_id] = (map[m.tenant_id] ?? 0) + 1;
-    }
-    return map;
-  }, [meters]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeFrom = filtered.length === 0 ? 0 : pageStart + 1;
+  const rangeTo = Math.min(pageStart + PAGE_SIZE, filtered.length);
 
-  const filteredAccounts = useMemo(
-    () =>
-      statusFilter === "all"
-        ? accounts
-        : accounts.filter((r) => r.status === statusFilter),
-    [accounts, statusFilter],
-  );
-
-  const outstanding = useMemo(
-    () => bills.reduce((s, bil) => s + Number(bil.balance || 0), 0),
-    [bills],
-  );
+  useEffect(() => {
+    setPage(1);
+  }, [search, kind]);
 
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow={`Platform · ${config.label}`}
         title={config.label}
-        description={`${config.label} company workspaces, customer accounts, meters, and bills.`}
-        actions={
-          <Select
-            className={filterSelectClassName()}
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value as "all" | UtilityAccountStatus)
-            }
-          >
-            <option value="all">All account statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
-            <option value="closed">Closed</option>
-          </Select>
-        }
+        description={`${config.label} company workspaces across the platform.`}
       />
 
       <AdminKpiRow>
@@ -187,20 +170,20 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
         />
         <AdminKpi
           label="Accounts"
-          value={loading ? "—" : filteredAccounts.length}
+          value={loading ? "—" : accountTotal}
           icon={KindIcon}
           accent={config.accent}
         />
         <AdminKpi
           label="Meters"
-          value={loading ? "—" : meters.length}
+          value={loading ? "—" : meterTotal}
           icon={Gauge}
           accent="amber"
         />
         <AdminKpi
           label="Outstanding"
           value={loading ? "—" : money(outstanding)}
-          hint={`${bills.length} bill(s)`}
+          hint={`${billCount} bill(s)`}
           icon={Wallet}
           accent="green"
         />
@@ -208,13 +191,19 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
 
       {error && <AdminError message={error} />}
 
-      <AdminTableCard
-        footer={
-          !loading
-            ? `${workspaces.length} ${config.label.toLowerCase()} company workspace(s)`
-            : undefined
-        }
-      >
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search workspace name, slug…"
+          className="pl-9"
+          aria-label="Search workspaces"
+        />
+      </div>
+
+      <AdminTableCard>
         <AdminSectionTitle
           title={`${config.label} company workspaces`}
           description="Utility tenants provisioned on the platform"
@@ -247,8 +236,14 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
                   </AdminEmpty>
                 </td>
               </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7}>
+                  <AdminEmpty>No workspaces match “{search.trim()}”.</AdminEmpty>
+                </td>
+              </tr>
             ) : (
-              workspaces.map((t) => {
+              pageRows.map((t) => {
                 const key = t.subdomain || t.slug;
                 return (
                   <tr
@@ -271,10 +266,10 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
                       {memberCounts[t.id] ?? 0}
                     </td>
                     <td className="px-4 py-3 tabular-nums font-medium">
-                      {accountsByTenant[t.id] ?? 0}
+                      {accountCounts[t.id] ?? 0}
                     </td>
                     <td className="px-4 py-3 tabular-nums font-medium">
-                      {metersByTenant[t.id] ?? 0}
+                      {meterCounts[t.id] ?? 0}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {tenantSubdomainLabel(key)}
@@ -296,166 +291,40 @@ export function AdminUtilityOpsPage({ kind }: { kind: UtilityKind }) {
             )}
           </tbody>
         </table>
+        {!loading && filtered.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Showing {rangeFrom}–{rangeTo} of {filtered.length} workspace
+              {filtered.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Previous
+              </Button>
+              <span className="min-w-[5.5rem] text-center text-xs font-medium text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </AdminTableCard>
-
-      <AdminTableCard
-        footer={
-          !loading
-            ? `${filteredAccounts.length} ${config.label.toLowerCase()} accounts`
-            : undefined
-        }
-      >
-        <AdminSectionTitle
-          title="Customer accounts"
-          description="Accounts opened by these utility companies"
-        />
-        <table className="w-full text-left text-sm">
-          <thead className={adminTableHeadClass()}>
-            <tr>
-              <th className="px-4 py-3 font-medium">Account</th>
-              <th className="px-4 py-3 font-medium">Workspace</th>
-              <th className="px-4 py-3 font-medium">Unit price</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={4}>
-                  <AdminEmpty>Loading…</AdminEmpty>
-                </td>
-              </tr>
-            ) : filteredAccounts.length === 0 ? (
-              <tr>
-                <td colSpan={4}>
-                  <AdminEmpty>
-                    {workspaces.length > 0
-                      ? `${config.label} companies exist, but no customer accounts yet.`
-                      : `No ${config.label.toLowerCase()} accounts yet.`}
-                  </AdminEmpty>
-                </td>
-              </tr>
-            ) : (
-              filteredAccounts.map((a) => (
-                <tr
-                  key={a.id}
-                  className="border-t border-border/70 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3 font-medium">{a.account_number}</td>
-                  <td className="px-4 py-3">
-                    {a.tenants ? (
-                      <Link
-                        to={`/app/admin/tenants/${a.tenant_id}`}
-                        className="text-brand-blue hover:underline"
-                      >
-                        {a.tenants.name}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{money(a.unit_price)}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone(a.status)}>{a.status}</Badge>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </AdminTableCard>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AdminTableCard footer={!loading ? `${meters.length} meters` : undefined}>
-          <AdminSectionTitle title="Meters" />
-          <table className="w-full text-left text-sm">
-            <thead className={adminTableHeadClass()}>
-              <tr>
-                <th className="px-4 py-3 font-medium">Meter #</th>
-                <th className="px-4 py-3 font-medium">Workspace</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={3}>
-                    <AdminEmpty>Loading…</AdminEmpty>
-                  </td>
-                </tr>
-              ) : meters.length === 0 ? (
-                <tr>
-                  <td colSpan={3}>
-                    <AdminEmpty>No meters yet.</AdminEmpty>
-                  </td>
-                </tr>
-              ) : (
-                meters.slice(0, 20).map((m) => (
-                  <tr
-                    key={m.id}
-                    className="border-t border-border/70 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 font-medium">{m.meter_number}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {m.tenants?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge tone={statusTone(m.status)}>{m.status}</Badge>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </AdminTableCard>
-
-        <AdminTableCard footer={!loading ? `${bills.length} recent bills` : undefined}>
-          <AdminSectionTitle title="Recent bills" />
-          <table className="w-full text-left text-sm">
-            <thead className={adminTableHeadClass()}>
-              <tr>
-                <th className="px-4 py-3 font-medium">Workspace</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Balance</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4}>
-                    <AdminEmpty>Loading…</AdminEmpty>
-                  </td>
-                </tr>
-              ) : bills.length === 0 ? (
-                <tr>
-                  <td colSpan={4}>
-                    <AdminEmpty>No bills yet.</AdminEmpty>
-                  </td>
-                </tr>
-              ) : (
-                bills.slice(0, 20).map((b) => (
-                  <tr
-                    key={b.id}
-                    className="border-t border-border/70 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {b.tenants?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {money(b.total_amount)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">{money(b.balance)}</td>
-                    <td className="px-4 py-3">
-                      <Badge tone={statusTone(b.status)}>{b.status}</Badge>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </AdminTableCard>
-      </div>
     </div>
   );
 }

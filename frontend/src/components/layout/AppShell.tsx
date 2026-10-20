@@ -55,6 +55,7 @@ const UTILITY_KIND_TENANT_TYPE: Record<UtilityKind, string> = {
   electricity: "electricity_company",
 };
 
+/** Full ops nav — kept for electricity; water uses the simplified builders below. */
 function utilityStaffNav(kind: UtilityKind): NavItem[] {
   const base = `/app/${kind}`;
   const service = kind === "water" ? "Water" : "Electricity";
@@ -103,15 +104,65 @@ function utilityStaffNav(kind: UtilityKind): NavItem[] {
   ];
 }
 
+function waterAdminNav(): NavItem[] {
+  const base = "/app/water";
+  return [
+    { to: base, label: "Overview", icon: LayoutDashboard, section: "Workspace", end: true },
+    { to: `${base}/customers`, label: "Customers", icon: Users, section: "Workspace" },
+    {
+      to: `${base}/payments`,
+      label: "Finance & Payments",
+      icon: CreditCard,
+      section: "Workspace",
+    },
+    { to: `${base}/reports`, label: "Reports", icon: BarChart3, section: "Management" },
+    { to: `${base}/staff`, label: "Staff", icon: Shield, section: "Management" },
+    { to: `${base}/settings`, label: "Company Settings", icon: Settings, section: "Management" },
+  ];
+}
+
+function waterStaffNav(): NavItem[] {
+  const base = "/app/water";
+  return [
+    { to: base, label: "Overview", icon: LayoutDashboard, section: "Workspace", end: true },
+    { to: `${base}/customers`, label: "Customers", icon: Users, section: "Workspace" },
+    {
+      to: `${base}/payments`,
+      label: "Finance & Payments",
+      icon: CreditCard,
+      section: "Workspace",
+    },
+    { to: `${base}/reports`, label: "Reports", icon: BarChart3, section: "Workspace" },
+  ];
+}
+
 function utilityCustomerNav(kind: UtilityKind): NavItem[] {
   const base = `/app/${kind}`;
-  const label = kind === "water" ? "Water" : "Electricity";
-  const Icon = kind === "water" ? Droplets : Zap;
+  if (kind === "water") {
+    return [
+      { to: base, label: "Overview", icon: Droplets, end: true, section: "Workspace" },
+      {
+        to: `${base}/my-payments`,
+        label: "Finance & Payments",
+        icon: CreditCard,
+        section: "Workspace",
+      },
+    ];
+  }
+  const Icon = Zap;
   return [
-    { to: base, label: `${label} dashboard`, icon: Icon, end: true },
+    { to: base, label: "Electricity dashboard", icon: Icon, end: true },
     { to: `${base}/my-bills`, label: "My bills", icon: FileText },
     { to: `${base}/my-payments`, label: "My payments", icon: CreditCard },
   ];
+}
+
+function utilityOpsNav(kind: UtilityKind, role: AppRole): NavItem[] {
+  if (kind === "water") {
+    if (role === "utility_admin") return waterAdminNav();
+    if (role === "utility_staff") return waterStaffNav();
+  }
+  return utilityStaffNav(kind);
 }
 
 function navForContext(
@@ -162,7 +213,7 @@ function navForContext(
       (r === "utility_admin" || r === "utility_staff")
     ) {
       const kind: UtilityKind = t === "water_company" ? "water" : "electricity";
-      return utilityStaffNav(kind);
+      return utilityOpsNav(kind, r);
     }
     if (
       (t === "water_company" || t === "electricity_company") &&
@@ -193,7 +244,7 @@ function navForContext(
 
   (["water", "electricity"] as UtilityKind[]).forEach((kind) => {
     const tenantType = UTILITY_KIND_TENANT_TYPE[kind];
-    const isStaff = memberships.some(
+    const staffMembership = memberships.find(
       (m) =>
         m.tenant.tenant_type === tenantType &&
         (m.role === "utility_admin" || m.role === "utility_staff"),
@@ -201,7 +252,7 @@ function navForContext(
     const isCustomer = memberships.some(
       (m) => m.tenant.tenant_type === tenantType && m.role === "utility_customer",
     );
-    if (isStaff) items.push(...utilityStaffNav(kind));
+    if (staffMembership) items.push(...utilityOpsNav(kind, staffMembership.role));
     else if (isCustomer) items.push(...utilityCustomerNav(kind));
   });
 
@@ -219,18 +270,27 @@ function utilityPageTitle(pathname: string, kind: UtilityKind): string | null {
   const base = `/app/${kind}`;
   if (pathname !== base && !pathname.startsWith(`${base}/`)) return null;
   const label = kind === "water" ? "Water" : "Electricity";
-  if (pathname.startsWith(`${base}/customers`)) return "Customers & Accounts";
+  const simplifiedWater = kind === "water";
+  if (pathname.startsWith(`${base}/customers`)) {
+    return simplifiedWater ? "Customers" : "Customers & Accounts";
+  }
   if (pathname.startsWith(`${base}/connections`)) return "Houses";
   if (pathname.startsWith(`${base}/meters`)) return `${label} Meters`;
   if (pathname.startsWith(`${base}/readings`)) return "Meter Readings";
   if (pathname.startsWith(`${base}/bills`)) return "Bills & Billing";
-  if (pathname.startsWith(`${base}/payments`)) return "Payments & Verification";
-  if (pathname.startsWith(`${base}/staff`)) return "Staff & Permissions";
+  if (pathname.startsWith(`${base}/payments`)) {
+    return simplifiedWater ? "Finance & Payments" : "Payments & Verification";
+  }
+  if (pathname.startsWith(`${base}/staff`)) {
+    return simplifiedWater ? "Staff" : "Staff & Permissions";
+  }
   if (pathname.startsWith(`${base}/reports`)) return "Reports";
   if (pathname.startsWith(`${base}/notifications`)) return "Notifications";
   if (pathname.startsWith(`${base}/settings`)) return "Company Settings";
   if (pathname.startsWith(`${base}/my-bills`)) return `My ${label.toLowerCase()} bills`;
-  if (pathname.startsWith(`${base}/my-payments`)) return `My ${label.toLowerCase()} payments`;
+  if (pathname.startsWith(`${base}/my-payments`)) {
+    return simplifiedWater ? "Finance & Payments" : `My ${label.toLowerCase()} payments`;
+  }
   if (pathname === base || pathname === `${base}/`) return "Overview";
   return `${label} Company Workspace`;
 }
@@ -705,9 +765,10 @@ export function AppShell() {
               >
                 <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
               </button>
-              {isUtilityWorkspace && (
+              {isUtilityWorkspace &&
+                activeMembership?.tenant.tenant_type !== "water_company" && (
                 <Link
-                  to={`/app/${activeMembership?.tenant.tenant_type === "water_company" ? "water" : "electricity"}/notifications${tenantSearch}`}
+                  to={`/app/electricity/notifications${tenantSearch}`}
                   className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   title="Notifications"
                   aria-label="Notifications"

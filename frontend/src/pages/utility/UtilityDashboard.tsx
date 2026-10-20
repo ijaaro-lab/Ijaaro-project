@@ -10,15 +10,17 @@ import {
   Home,
   type LucideIcon,
   RefreshCw,
+  Shield,
   Users,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { BarChart, DonutChart } from "@/components/charts/SimpleCharts";
+import { AppLoading } from "@/components/ui/app-loading";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
-import { money, statusTone } from "@/lib/format";
+import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { MeterReading, UtilityBill, UtilityPayment } from "@/types/database";
 import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
@@ -50,7 +52,7 @@ function formatRangeLabel(key: RangeKey): string {
   const end = new Date();
   const start = rangeStart(key);
   const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
@@ -68,15 +70,17 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   const { activeMembership, user } = useAuth();
   const tenantId = activeMembership?.tenant_id;
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
-  const isStaff =
-    activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
-  const isCustomer = activeMembership?.role === "utility_customer";
+  const role = activeMembership?.role;
+  const isStaff = role === "utility_admin" || role === "utility_staff";
+  const isAdmin = role === "utility_admin";
+  const isCustomer = role === "utility_customer";
   const tenantSearch = activeMembership?.tenant.slug
     ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
     : "";
   const accent = kind === "water" ? "water" : "power";
   const chartColor = kind === "water" ? "#3B82F6" : "var(--color-brand-power)";
   const serviceLabel = KIND_LABEL[kind];
+  const simplifiedWater = kind === "water";
 
   const [range, setRange] = useState<RangeKey>("30d");
   const [chartSpan, setChartSpan] = useState<ChartSpan>("6m");
@@ -84,6 +88,8 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   const [error, setError] = useState<string | null>(null);
 
   const [accountCount, setAccountCount] = useState(0);
+  const [staffCount, setStaffCount] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
   const [activeConnections, setActiveConnections] = useState(0);
   const [meterCount, setMeterCount] = useState(0);
   const [billsIssued, setBillsIssued] = useState(0);
@@ -112,167 +118,219 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
     prevStart.setDate(prevStart.getDate() - periodDays);
     const chartMonths = chartSpan === "6m" ? 6 : 3;
     const chartFrom = monthsAgoStart(chartMonths);
+    const emptyCount = { count: 0, error: null as null };
+    const emptyRows = { data: [] as MeterReading[], error: null as null };
 
     (async () => {
       setLoading(true);
       setError(null);
+      try {
+        if (isStaff) {
+          const [
+            accRes,
+            activeAccRes,
+            meterRes,
+            billsPeriodRes,
+            prevBillsRes,
+            openBillsRes,
+            paidRes,
+            prevPaidRes,
+            statusPayRes,
+            billStatusRes,
+            chartPaidRes,
+            chartReadingsRes,
+            pendingRes,
+            membersRes,
+          ] = await Promise.all([
+            supabase
+              .from("utility_accounts")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenantId),
+            supabase
+              .from("utility_accounts")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenantId)
+              .eq("status", "active"),
+            simplifiedWater
+              ? Promise.resolve(emptyCount)
+              : supabase
+                  .from("meters")
+                  .select("id", { count: "exact", head: true })
+                  .eq("tenant_id", tenantId),
+            supabase
+              .from("utility_bills")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenantId)
+              .gte("created_at", from)
+              .neq("status", "cancelled"),
+            supabase
+              .from("utility_bills")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenantId)
+              .gte("created_at", prevStart.toISOString())
+              .lt("created_at", from)
+              .neq("status", "cancelled"),
+            supabase
+              .from("utility_bills")
+              .select("balance,status")
+              .eq("tenant_id", tenantId)
+              .in("status", ["issued", "partial", "overdue"]),
+            supabase
+              .from("utility_payments")
+              .select("amount,currency,reviewed_at,submitted_at,status")
+              .eq("tenant_id", tenantId)
+              .eq("status", "paid")
+              .gte("reviewed_at", from),
+            supabase
+              .from("utility_payments")
+              .select("amount")
+              .eq("tenant_id", tenantId)
+              .eq("status", "paid")
+              .gte("reviewed_at", prevStart.toISOString())
+              .lt("reviewed_at", from),
+            supabase.from("utility_payments").select("status,amount").eq("tenant_id", tenantId),
+            supabase
+              .from("utility_bills")
+              .select("status")
+              .eq("tenant_id", tenantId)
+              .neq("status", "cancelled"),
+            supabase
+              .from("utility_payments")
+              .select("amount,currency,reviewed_at,submitted_at,status")
+              .eq("tenant_id", tenantId)
+              .eq("status", "paid")
+              .gte("reviewed_at", chartFrom.toISOString()),
+            simplifiedWater
+              ? Promise.resolve(emptyRows)
+              : supabase
+                  .from("meter_readings")
+                  .select("reading_date,units_consumed,status")
+                  .eq("tenant_id", tenantId)
+                  .gte("reading_date", chartFrom.toISOString().slice(0, 10))
+                  .in("status", ["valid", "corrected", "reset"]),
+            supabase
+              .from("utility_payments")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenantId)
+              .eq("status", "pending"),
+            isAdmin
+              ? supabase.rpc("list_company_member_profiles", { p_tenant_id: tenantId })
+              : Promise.resolve({ data: null, error: null }),
+          ]);
 
-      if (isStaff) {
-        const [
-          accRes,
-          activeAccRes,
-          meterRes,
-          billsPeriodRes,
-          prevBillsRes,
-          openBillsRes,
-          paidRes,
-          prevPaidRes,
-          statusPayRes,
-          billStatusRes,
-          chartPaidRes,
-          chartReadingsRes,
-        ] = await Promise.all([
-          supabase.from("utility_accounts").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
-          supabase
+          if (cancelled) return;
+
+          const firstErr =
+            accRes.error ||
+            activeAccRes.error ||
+            meterRes.error ||
+            billsPeriodRes.error ||
+            prevBillsRes.error ||
+            openBillsRes.error ||
+            paidRes.error ||
+            prevPaidRes.error ||
+            statusPayRes.error ||
+            billStatusRes.error ||
+            chartPaidRes.error ||
+            chartReadingsRes.error ||
+            pendingRes.error ||
+            membersRes.error;
+
+          if (firstErr) {
+            setError(firstErr.message);
+          } else {
+            setAccountCount(accRes.count ?? 0);
+            setActiveConnections(activeAccRes.count ?? 0);
+            setMeterCount(meterRes.count ?? 0);
+            setBillsIssued(billsPeriodRes.count ?? 0);
+            setPrevBillsIssued(prevBillsRes.count ?? 0);
+            setOutstanding((openBillsRes.data ?? []).reduce((s, b) => s + Number(b.balance), 0));
+            setCollected((paidRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0));
+            setPrevCollected((prevPaidRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0));
+            setAllPayments((statusPayRes.data as unknown as UtilityPayment[]) ?? []);
+            setAllBills(billStatusRes.data ?? []);
+            setApprovedInCharts((chartPaidRes.data as unknown as UtilityPayment[]) ?? []);
+            setReadingsInCharts((chartReadingsRes.data as unknown as MeterReading[]) ?? []);
+            setPendingPayments(pendingRes.count ?? 0);
+            if (membersRes.data) {
+              const members =
+                (membersRes.data as Array<{ role: string; membership_status: string }>) ?? [];
+              setStaffCount(
+                members.filter(
+                  (m) => m.role === "utility_staff" && m.membership_status === "active",
+                ).length,
+              );
+            } else {
+              setStaffCount(0);
+            }
+          }
+        } else if (isCustomer && user) {
+          const { data: accounts, error: accErr } = await supabase
             .from("utility_accounts")
-            .select("id", { count: "exact", head: true })
+            .select("id")
             .eq("tenant_id", tenantId)
-            .eq("status", "active"),
-          supabase.from("meters").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
-          supabase
-            .from("utility_bills")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", tenantId)
-            .gte("created_at", from)
-            .neq("status", "cancelled"),
-          supabase
-            .from("utility_bills")
-            .select("id", { count: "exact", head: true })
-            .eq("tenant_id", tenantId)
-            .gte("created_at", prevStart.toISOString())
-            .lt("created_at", from)
-            .neq("status", "cancelled"),
-          supabase
-            .from("utility_bills")
-            .select("balance,status")
-            .eq("tenant_id", tenantId)
-            .in("status", ["issued", "partial", "overdue"]),
-          supabase
-            .from("utility_payments")
-            .select("amount,currency,reviewed_at,submitted_at,status")
-            .eq("tenant_id", tenantId)
-            .eq("status", "paid")
-            .gte("reviewed_at", from),
-          supabase
-            .from("utility_payments")
-            .select("amount")
-            .eq("tenant_id", tenantId)
-            .eq("status", "paid")
-            .gte("reviewed_at", prevStart.toISOString())
-            .lt("reviewed_at", from),
-          supabase.from("utility_payments").select("status,amount").eq("tenant_id", tenantId),
-          supabase
-            .from("utility_bills")
-            .select("status")
-            .eq("tenant_id", tenantId)
-            .neq("status", "cancelled"),
-          supabase
-            .from("utility_payments")
-            .select("amount,currency,reviewed_at,submitted_at,status")
-            .eq("tenant_id", tenantId)
-            .eq("status", "paid")
-            .gte("reviewed_at", chartFrom.toISOString()),
-          supabase
-            .from("meter_readings")
-            .select("reading_date,units_consumed,status")
-            .eq("tenant_id", tenantId)
-            .gte("reading_date", chartFrom.toISOString().slice(0, 10))
-            .in("status", ["valid", "corrected", "reset"]),
-        ]);
-
-        if (cancelled) return;
-
-        const firstErr =
-          accRes.error ||
-          activeAccRes.error ||
-          meterRes.error ||
-          billsPeriodRes.error ||
-          prevBillsRes.error ||
-          openBillsRes.error ||
-          paidRes.error ||
-          prevPaidRes.error ||
-          statusPayRes.error ||
-          billStatusRes.error ||
-          chartPaidRes.error ||
-          chartReadingsRes.error;
-
-        if (firstErr) {
-          setError(firstErr.message);
-        } else {
-          setAccountCount(accRes.count ?? 0);
-          setActiveConnections(activeAccRes.count ?? 0);
-          setMeterCount(meterRes.count ?? 0);
-          setBillsIssued(billsPeriodRes.count ?? 0);
-          setPrevBillsIssued(prevBillsRes.count ?? 0);
-          setOutstanding((openBillsRes.data ?? []).reduce((s, b) => s + Number(b.balance), 0));
-          setCollected((paidRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0));
-          setPrevCollected((prevPaidRes.data ?? []).reduce((s, p) => s + Number(p.amount), 0));
-          setAllPayments((statusPayRes.data as unknown as UtilityPayment[]) ?? []);
-          setAllBills(billStatusRes.data ?? []);
-          setApprovedInCharts((chartPaidRes.data as unknown as UtilityPayment[]) ?? []);
-          setReadingsInCharts((chartReadingsRes.data as unknown as MeterReading[]) ?? []);
+            .eq("customer_id", user.id);
+          if (cancelled) return;
+          if (accErr) {
+            setError(accErr.message);
+            return;
+          }
+          const accountIds = (accounts ?? []).map((a) => a.id);
+          const [byAccount, byResp, payRes] = await Promise.all([
+            accountIds.length > 0
+              ? supabase.from("utility_bills").select("*").in("utility_account_id", accountIds)
+              : Promise.resolve({ data: [] as UtilityBill[], error: null }),
+            supabase
+              .from("utility_bills")
+              .select("*")
+              .eq("tenant_id", tenantId)
+              .eq("responsible_party_id", user.id),
+            supabase
+              .from("utility_payments")
+              .select("*")
+              .eq("tenant_id", tenantId)
+              .eq("payer_id", user.id)
+              .order("submitted_at", { ascending: false })
+              .limit(simplifiedWater ? 10 : 5),
+          ]);
+          if (cancelled) return;
+          if (byAccount.error || byResp.error || payRes.error) {
+            setError(
+              byAccount.error?.message || byResp.error?.message || payRes.error?.message || "Failed",
+            );
+          } else {
+            const merged = new Map<string, UtilityBill>();
+            for (const b of [...(byAccount.data ?? []), ...(byResp.data ?? [])]) merged.set(b.id, b);
+            setCustomerBills(
+              Array.from(merged.values()).sort((a, b) => a.due_date.localeCompare(b.due_date)),
+            );
+            setCustomerPayments(payRes.data ?? []);
+            setAccountCount(accountIds.length);
+          }
         }
-      } else if (isCustomer && user) {
-        const { data: accounts, error: accErr } = await supabase
-          .from("utility_accounts")
-          .select("id")
-          .eq("tenant_id", tenantId)
-          .eq("customer_id", user.id);
-        if (cancelled) return;
-        if (accErr) {
-          setError(accErr.message);
-          setLoading(false);
-          return;
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load dashboard");
         }
-        const accountIds = (accounts ?? []).map((a) => a.id);
-        const [byAccount, byResp, payRes] = await Promise.all([
-          accountIds.length > 0
-            ? supabase.from("utility_bills").select("*").in("utility_account_id", accountIds)
-            : Promise.resolve({ data: [] as UtilityBill[], error: null }),
-          supabase
-            .from("utility_bills")
-            .select("*")
-            .eq("tenant_id", tenantId)
-            .eq("responsible_party_id", user.id),
-          supabase
-            .from("utility_payments")
-            .select("*")
-            .eq("tenant_id", tenantId)
-            .eq("payer_id", user.id)
-            .order("submitted_at", { ascending: false })
-            .limit(5),
-        ]);
-        if (cancelled) return;
-        if (byAccount.error || byResp.error || payRes.error) {
-          setError(
-            byAccount.error?.message || byResp.error?.message || payRes.error?.message || "Failed",
-          );
-        } else {
-          const merged = new Map<string, UtilityBill>();
-          for (const b of [...(byAccount.data ?? []), ...(byResp.data ?? [])]) merged.set(b.id, b);
-          setCustomerBills(
-            Array.from(merged.values()).sort((a, b) => a.due_date.localeCompare(b.due_date)),
-          );
-          setCustomerPayments(payRes.data ?? []);
-        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [tenantId, matchesKind, isStaff, isCustomer, user, range, chartSpan]);
+  }, [
+    tenantId,
+    matchesKind,
+    isStaff,
+    isAdmin,
+    isCustomer,
+    user,
+    range,
+    chartSpan,
+    simplifiedWater,
+  ]);
 
   const collectionPoints = useMemo(() => {
     const months = chartSpan === "6m" ? 6 : 3;
@@ -358,17 +416,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-        <div
-          className={cn(
-            "h-9 w-9 animate-pulse rounded-full",
-            kind === "water" ? "bg-brand-water/25" : "bg-brand-power/30",
-          )}
-        />
-        Loading dashboard…
-      </div>
-    );
+    return <AppLoading message="Loading dashboard…" fullScreen={false} />;
   }
 
   return (
@@ -379,10 +427,11 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
         </div>
       )}
 
+      {/* Staff / admin overview — responsive KPI row + charts */}
       {isStaff && (
         <>
-          <header className="flex flex-wrap items-end justify-between gap-5">
-            <div>
+          <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+            <div className="min-w-0">
               <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Overview
               </h2>
@@ -391,23 +440,32 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
                 today.
               </p>
             </div>
-            <div className="relative">
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative w-full sm:w-auto sm:min-w-[20rem]">
+              <Calendar className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-water" />
               <select
-                className="h-10 appearance-none rounded-xl border border-border bg-card py-2 pl-10 pr-9 text-sm font-medium text-foreground shadow-sm"
+                className="h-11 w-full cursor-pointer appearance-none rounded-2xl border border-border/80 bg-card py-2.5 pl-11 pr-10 text-sm font-medium tracking-tight text-foreground shadow-[0_1px_2px_rgba(11,31,58,0.06)] transition hover:border-brand-water/40 focus:border-brand-water focus:outline-none focus:ring-2 focus:ring-brand-water/20 dark:shadow-none"
                 value={range}
                 onChange={(e) => setRange(e.target.value as RangeKey)}
                 aria-label="Date range"
               >
                 <option value="7d">{formatRangeLabel("7d")} (7 days)</option>
-                <option value="30d">{formatRangeLabel("30d")}</option>
+                <option value="30d">{formatRangeLabel("30d")} (30 days)</option>
                 <option value="90d">{formatRangeLabel("90d")} (90 days)</option>
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
           </header>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:gap-4",
+              simplifiedWater && isAdmin
+                ? "xl:grid-cols-6"
+                : simplifiedWater
+                  ? "xl:grid-cols-5"
+                  : "xl:grid-cols-6",
+            )}
+          >
             <KpiTile
               label="Total Customers"
               value={formatCount(accountCount)}
@@ -416,26 +474,42 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               to={`/app/${kind}/customers${tenantSearch}`}
             />
             <KpiTile
-              label="Active Connections"
+              label={simplifiedWater ? "Active Accounts" : "Active Connections"}
               value={formatCount(activeConnections)}
               icon={Home}
               tone="green"
-              to={`/app/${kind}/connections${tenantSearch}`}
+              to={
+                simplifiedWater
+                  ? `/app/${kind}/customers${tenantSearch}`
+                  : `/app/${kind}/connections${tenantSearch}`
+              }
             />
+            {simplifiedWater ? (
+              isAdmin && (
+                <KpiTile
+                  label="Total Staff"
+                  value={formatCount(staffCount)}
+                  icon={Shield}
+                  tone="violet"
+                  to={`/app/${kind}/staff${tenantSearch}`}
+                />
+              )
+            ) : (
+              <KpiTile
+                label="Total Meters"
+                value={formatCount(meterCount)}
+                icon={Gauge}
+                tone="violet"
+                to={`/app/${kind}/meters${tenantSearch}`}
+              />
+            )}
             <KpiTile
-              label="Total Meters"
-              value={formatCount(meterCount)}
-              icon={Gauge}
-              tone="violet"
-              to={`/app/${kind}/meters${tenantSearch}`}
-            />
-            <KpiTile
-              label="Bills Issued"
-              value={formatCount(billsIssued)}
+              label={simplifiedWater ? "Awaiting Approval" : "Bills Issued"}
+              value={formatCount(simplifiedWater ? pendingPayments : billsIssued)}
               icon={FileText}
               tone="sky"
-              delta={billsDelta}
-              to={`/app/${kind}/bills${tenantSearch}`}
+              delta={simplifiedWater ? undefined : billsDelta}
+              to={`/app/${kind}/${simplifiedWater ? "payments" : "bills"}${tenantSearch}`}
             />
             <KpiTile
               label="Payments Collected"
@@ -450,14 +524,24 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               value={money(outstanding)}
               icon={RefreshCw}
               tone="rose"
-              to={`/app/${kind}/bills${tenantSearch}`}
+              to={`/app/${kind}/${simplifiedWater ? "payments" : "bills"}${tenantSearch}`}
             />
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-3">
-            <section className="flex min-h-[380px] flex-col rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_3px_rgba(11,31,58,0.05)] dark:border-border dark:shadow-none">
-              <div className="mb-5 flex items-start justify-between gap-2">
-                <div>
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-4 xl:gap-5",
+              simplifiedWater ? "lg:grid-cols-2" : "lg:grid-cols-2 xl:grid-cols-3",
+            )}
+          >
+            <section
+              className={cn(
+                "flex min-h-[340px] flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] sm:p-6 dark:border-border dark:shadow-none",
+                !simplifiedWater && "lg:col-span-2 xl:col-span-1",
+              )}
+            >
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2 sm:mb-5">
+                <div className="min-w-0">
                   <h3 className="font-display text-base font-semibold text-foreground">
                     {serviceLabel} Collections
                   </h3>
@@ -469,16 +553,16 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
                 points={collectionPoints}
                 color={chartColor}
                 highlightColor={chartColor}
-                height={220}
+                height={200}
                 formatValue={(n) => money(n)}
                 emptyLabel="No approved collections yet"
                 showValues={false}
-                className="flex-1"
+                className="min-h-[180px] flex-1 sm:min-h-[220px]"
               />
-              <div className="mt-5 border-t border-border/80 pt-4">
+              <div className="mt-4 border-t border-border/80 pt-4 sm:mt-5">
                 <p className="text-xs text-muted-foreground">Total collected · {lastMonthLabel}</p>
                 <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
-                  <span className="font-display text-2xl font-bold tabular-nums text-foreground">
+                  <span className="font-display text-xl font-bold tabular-nums text-foreground sm:text-2xl">
                     {money(lastCollection)}
                   </span>
                   <DeltaBadge value={collectionDelta} vsLabel={prevMonthLabel} />
@@ -486,8 +570,8 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               </div>
             </section>
 
-            <section className="flex min-h-[380px] flex-col rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_3px_rgba(11,31,58,0.05)] dark:border-border dark:shadow-none">
-              <div className="mb-5">
+            <section className="flex min-h-[340px] flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] sm:p-6 dark:border-border dark:shadow-none">
+              <div className="mb-4 sm:mb-5">
                 <h3 className="font-display text-base font-semibold text-foreground">
                   Payment Status Distribution
                 </h3>
@@ -497,78 +581,100 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
                 <div className="flex flex-1 flex-col items-center justify-center gap-1 px-4 py-10 text-center">
                   <p className="text-sm font-medium text-foreground">No payments yet</p>
                   <p className="text-xs text-muted-foreground">
-                    Status mix appears after customers submit payments.
+                    Status mix appears after payments are recorded or submitted.
                   </p>
                 </div>
               ) : (
                 <DonutChart
                   slices={paymentStatusSlices}
-                  size={180}
-                  thickness={24}
+                  size={160}
+                  thickness={22}
                   centerLabel="Total"
                   centerValue={formatCount(statusTotal)}
-                  className="flex-1 !flex-col !items-center justify-center sm:!flex-col sm:!items-center"
+                  showCounts
+                  className="flex-1 !flex-col !items-center justify-center gap-5"
                 />
               )}
             </section>
 
-            <section className="flex min-h-[380px] flex-col rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_3px_rgba(11,31,58,0.05)] dark:border-border dark:shadow-none">
-              <div className="mb-5 flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-display text-base font-semibold text-foreground">
-                    {serviceLabel} Consumption
-                  </h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Total consumption (units)</p>
+            {!simplifiedWater && (
+              <section className="flex min-h-[340px] flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] sm:p-6 dark:border-border dark:shadow-none lg:col-span-2 xl:col-span-1">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-2 sm:mb-5">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-base font-semibold text-foreground">
+                      {serviceLabel} Consumption
+                    </h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Total consumption (units)</p>
+                  </div>
+                  <ChartSpanSelect value={chartSpan} onChange={setChartSpan} />
                 </div>
-                <ChartSpanSelect value={chartSpan} onChange={setChartSpan} />
-              </div>
-              <BarChart
-                points={consumptionPoints}
-                color={kind === "water" ? "#60A5FA" : "var(--color-brand-power)"}
-                highlightColor={kind === "water" ? "#60A5FA" : "var(--color-brand-power)"}
-                height={220}
-                emptyLabel="No meter readings with consumption yet"
-                showValues={false}
-                className="flex-1"
-              />
-              <div className="mt-5 border-t border-border/80 pt-4">
-                <p className="text-xs text-muted-foreground">
-                  Total consumption · {lastMonthLabel}
-                </p>
-                <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
-                  <span className="font-display text-2xl font-bold tabular-nums text-foreground">
-                    {formatCount(Math.round(lastConsumption))}{" "}
-                    <span className="text-base font-semibold text-muted-foreground">units</span>
-                  </span>
-                  <DeltaBadge value={consumptionDelta} vsLabel={prevMonthLabel} />
+                <BarChart
+                  points={consumptionPoints}
+                  color={chartColor}
+                  highlightColor={chartColor}
+                  height={200}
+                  emptyLabel="No meter readings with consumption yet"
+                  showValues={false}
+                  className="min-h-[180px] flex-1 sm:min-h-[220px]"
+                />
+                <div className="mt-4 border-t border-border/80 pt-4 sm:mt-5">
+                  <p className="text-xs text-muted-foreground">
+                    Total consumption · {lastMonthLabel}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
+                    <span className="font-display text-xl font-bold tabular-nums text-foreground sm:text-2xl">
+                      {formatCount(Math.round(lastConsumption))}{" "}
+                      <span className="text-base font-semibold text-muted-foreground">units</span>
+                    </span>
+                    <DeltaBadge value={consumptionDelta} vsLabel={prevMonthLabel} />
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
           </div>
         </>
       )}
 
       {isCustomer && (
         <>
+          <header>
+            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+              Overview
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {simplifiedWater
+                ? "Your water account balance and payment history."
+                : `Your ${serviceLabel.toLowerCase()} account and payment status.`}
+            </p>
+          </header>
+
           <div className="grid gap-3 sm:grid-cols-3">
             <MetricCard
-              label="Open bills"
-              value={customerBills.filter((b) => b.balance > 0).length}
-              icon={FileText}
+              label={simplifiedWater ? "My accounts" : "Open bills"}
+              value={
+                simplifiedWater
+                  ? accountCount
+                  : customerBills.filter((b) => b.balance > 0).length
+              }
+              icon={Home}
               accent="warning"
-              to={`/app/${kind}/my-bills${tenantSearch}`}
+              to={
+                simplifiedWater
+                  ? `/app/${kind}/my-payments${tenantSearch}`
+                  : `/app/${kind}/my-bills${tenantSearch}`
+              }
             />
             <MetricCard
               label="Outstanding balance"
               value={money(customerBills.reduce((s, b) => s + Number(b.balance), 0))}
               icon={Wallet}
               accent={accent}
-              to={`/app/${kind}/my-bills${tenantSearch}`}
+              to={`/app/${kind}/my-payments${tenantSearch}`}
             />
             <MetricCard
               label="Recent payments"
               value={customerPayments.length}
-              icon={Wallet}
+              icon={FileText}
               accent="green"
               to={`/app/${kind}/my-payments${tenantSearch}`}
             />
@@ -576,16 +682,39 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
 
           <section className="rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none">
             <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5">
-              <h3 className="font-display text-sm font-semibold text-foreground">My bills</h3>
+              <h3 className="font-display text-sm font-semibold text-foreground">
+                {simplifiedWater ? "Payment history" : "My bills"}
+              </h3>
               <Link
-                to={`/app/${kind}/my-bills${tenantSearch}`}
+                to={`/app/${kind}/my-payments${tenantSearch}`}
                 className="inline-flex items-center gap-1 text-sm font-medium text-brand-blue hover:underline dark:text-brand-water"
               >
                 View all
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-            {customerBills.length === 0 ? (
+            {simplifiedWater ? (
+              customerPayments.length === 0 ? (
+                <div className="px-4 py-5 text-sm text-muted-foreground">No payments yet.</div>
+              ) : (
+                <ul className="divide-y divide-border/80">
+                  {customerPayments.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {money(p.amount, p.currency)}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {new Date(p.submitted_at).toLocaleString()}
+                          {p.rejection_reason ? ` · ${p.rejection_reason}` : ""}
+                        </div>
+                      </div>
+                      <Badge tone={statusTone(p.status)}>{paymentStatusLabel(p.status)}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : customerBills.length === 0 ? (
               <div className="px-4 py-5 text-sm text-muted-foreground">No bills yet.</div>
             ) : (
               <ul className="divide-y divide-border/80">
@@ -670,76 +799,39 @@ function KpiTile({
   delta?: number | null;
   to: string;
 }) {
-  const tones: Record<
-    KpiTone,
-    { wrap: string; icon: string; deltaUp: string; deltaDown: string }
-  > = {
-    blue: {
-      wrap: "border-blue-100 bg-blue-50/80 dark:border-blue-500/20 dark:bg-blue-500/10",
-      icon: "bg-blue-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
-    green: {
-      wrap: "border-emerald-100 bg-emerald-50/80 dark:border-emerald-500/20 dark:bg-emerald-500/10",
-      icon: "bg-emerald-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
-    violet: {
-      wrap: "border-violet-100 bg-violet-50/80 dark:border-violet-500/20 dark:bg-violet-500/10",
-      icon: "bg-violet-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
-    sky: {
-      wrap: "border-sky-100 bg-sky-50/80 dark:border-sky-500/20 dark:bg-sky-500/10",
-      icon: "bg-sky-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
-    orange: {
-      wrap: "border-orange-100 bg-orange-50/80 dark:border-orange-500/20 dark:bg-orange-500/10",
-      icon: "bg-orange-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
-    rose: {
-      wrap: "border-rose-100 bg-rose-50/80 dark:border-rose-500/20 dark:bg-rose-500/10",
-      icon: "bg-rose-500 text-white",
-      deltaUp: "text-emerald-600 dark:text-emerald-400",
-      deltaDown: "text-rose-600 dark:text-rose-400",
-    },
+  const iconTone: Record<KpiTone, string> = {
+    blue: "bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300",
+    green: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300",
+    violet: "bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300",
+    sky: "bg-sky-500/15 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300",
+    orange: "bg-orange-500/15 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300",
+    rose: "bg-rose-500/15 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300",
   };
-  const t = tones[tone];
 
   return (
     <Link
       to={to}
-      className={cn(
-        "block rounded-2xl border px-3.5 py-3.5 transition hover:-translate-y-0.5 hover:shadow-md",
-        t.wrap,
-      )}
+      className="block rounded-2xl border border-border/80 bg-card px-4 py-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] transition hover:-translate-y-0.5 hover:shadow-md dark:border-border dark:shadow-none"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-full shadow-sm",
-            t.icon,
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
+      <div
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-full",
+          iconTone[tone],
+        )}
+      >
+        <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
       </div>
       <p className="mt-3 text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate font-display text-xl font-bold tracking-tight text-foreground">
+      <p className="mt-0.5 truncate font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
         {value}
       </p>
       {delta != null && (
         <p
           className={cn(
-            "mt-1 inline-flex items-center gap-0.5 text-[11px] font-semibold",
-            delta >= 0 ? t.deltaUp : t.deltaDown,
+            "mt-1.5 inline-flex items-center gap-0.5 text-[11px] font-semibold",
+            delta >= 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400",
           )}
         >
           {delta >= 0 ? (
@@ -748,7 +840,7 @@ function KpiTile({
             <ArrowDownRight className="h-3 w-3" />
           )}
           {delta >= 0 ? "+" : ""}
-          {delta}% vs prior period
+          {delta}% vs. last period
         </p>
       )}
     </Link>

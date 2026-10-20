@@ -1,15 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CreditCard, FileText, Receipt } from "lucide-react";
+import { AlertTriangle, CreditCard, Download, FileText, Receipt } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { BarChart, DonutChart } from "@/components/charts/SimpleCharts";
+import { AppLoading } from "@/components/ui/app-loading";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/metric-card";
+import { money, paymentStatusLabel, statusTone } from "@/lib/format";
+import { downloadTablePdf } from "@/lib/simplePdf";
 import { supabase } from "@/lib/supabase";
-import { money, statusTone } from "@/lib/format";
-import type { BillStatus, UtilityBill, UtilityPayment } from "@/types/database";
+import type { BillStatus, UtilityAccount, UtilityBill, UtilityPayment } from "@/types/database";
 import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
 
 type RangeKey = "30d" | "90d" | "365d" | "all";
+
+type AccountLite = Pick<UtilityAccount, "id" | "account_number"> & {
+  properties?: {
+    name: string | null;
+    address_line: string | null;
+  } | null;
+};
+
+type FinanceRow = {
+  id: string;
+  customerName: string;
+  accountNumber: string;
+  chargeType: string;
+  dateLabel: string;
+  statusKey: string;
+  statusLabel: string;
+  amount: number;
+  isOther: boolean;
+  isPaid: boolean;
+};
 
 function rangeStart(key: RangeKey): string | null {
   if (key === "all") return null;
@@ -20,6 +43,43 @@ function rangeStart(key: RangeKey): string | null {
   return d.toISOString();
 }
 
+function rangeLabel(key: RangeKey): string {
+  if (key === "30d") return "Last 30 days";
+  if (key === "90d") return "Last 90 days";
+  if (key === "365d") return "Last year";
+  return "All time";
+}
+
+function formatReportDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function billChargeType(bill: UtilityBill, simplifiedWater: boolean): { label: string; isOther: boolean } {
+  const snap = bill.occupancy_snapshot ?? {};
+  const description =
+    typeof snap.description === "string" ? snap.description.trim() : "";
+  if (description) {
+    const isOther = /other|adhoc|registration|extra/i.test(description);
+    return { label: description, isOther };
+  }
+  if (snap.billing_mode === "adhoc_charge") {
+    return { label: simplifiedWater ? "Other charge" : "Ad-hoc charge", isOther: true };
+  }
+  return { label: simplifiedWater ? "Water fee" : "Utility fee", isOther: false };
+}
+
+function billStatusLabel(status: string, simplifiedWater: boolean) {
+  if (status === "paid") return simplifiedWater ? "Paid" : paymentStatusLabel("paid");
+  if (status === "issued") return "Unpaid";
+  if (status === "partial") return "Partial";
+  if (status === "overdue") return "Overdue";
+  return status.replaceAll("_", " ");
+}
+
 export function ReportsPage({ kind }: { kind: UtilityKind }) {
   const { activeMembership } = useAuth();
   const tenantId = activeMembership?.tenant_id;
@@ -27,11 +87,15 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
   const isStaff =
     activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
   const label = KIND_LABEL[kind];
+  const simplifiedWater = kind === "water";
   const chartColor = kind === "water" ? "var(--color-brand-water)" : "var(--color-brand-power)";
+  const companyName =
+    activeMembership?.tenant.name || `${label} company`;
 
   const [range, setRange] = useState<RangeKey>("90d");
   const [bills, setBills] = useState<UtilityBill[]>([]);
   const [payments, setPayments] = useState<UtilityPayment[]>([]);
+  const [accounts, setAccounts] = useState<AccountLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,14 +114,27 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
         billQ = billQ.gte("created_at", from);
         payQ = payQ.gte("submitted_at", from);
       }
-      const [billRes, payRes] = await Promise.all([billQ, payQ]);
+      const [billRes, payRes, accRes] = await Promise.all([
+        billQ.order("created_at", { ascending: false }),
+        payQ,
+        supabase
+          .from("utility_accounts")
+          .select("id, account_number, properties(name, address_line)")
+          .eq("tenant_id", tenantId),
+      ]);
       if (cancelled) return;
-      if (billRes.error || payRes.error) {
-        setError(billRes.error?.message || payRes.error?.message || "Failed to load");
+      if (billRes.error || payRes.error || accRes.error) {
+        setError(
+          billRes.error?.message ||
+            payRes.error?.message ||
+            accRes.error?.message ||
+            "Failed to load",
+        );
       } else {
         setError(null);
         setBills(billRes.data ?? []);
         setPayments(payRes.data ?? []);
+        setAccounts((accRes.data as AccountLite[]) ?? []);
       }
       setLoading(false);
     })();
@@ -65,6 +142,37 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
       cancelled = true;
     };
   }, [tenantId, matchesKind, isStaff, range]);
+
+  const accountById = useMemo(() => {
+    const map = new Map<string, AccountLite>();
+    for (const a of accounts) map.set(a.id, a);
+    return map;
+  }, [accounts]);
+
+  const financeRows = useMemo((): FinanceRow[] => {
+    return bills
+      .filter((b) => b.status !== "cancelled")
+      .map((b) => {
+        const account = accountById.get(b.utility_account_id);
+        const customerName =
+          account?.properties?.name?.trim() ||
+          account?.properties?.address_line?.trim() ||
+          "Customer";
+        const { label: chargeType, isOther } = billChargeType(b, simplifiedWater);
+        return {
+          id: b.id,
+          customerName,
+          accountNumber: account?.account_number ?? "—",
+          chargeType,
+          dateLabel: formatReportDate(b.created_at),
+          statusKey: b.status,
+          statusLabel: billStatusLabel(b.status, simplifiedWater),
+          amount: Number(b.total_amount),
+          isOther,
+          isPaid: b.status === "paid" || Number(b.balance) <= 0,
+        };
+      });
+  }, [bills, accountById, simplifiedWater]);
 
   const totals = useMemo(() => {
     const totalBilled = bills.reduce((s, b) => s + Number(b.total_amount), 0);
@@ -74,6 +182,12 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
     const paid = payments.filter((p) => p.status === "paid");
     const rejected = payments.filter((p) => p.status === "rejected");
     const pending = payments.filter((p) => p.status === "pending");
+    const waterFeeCharged = financeRows
+      .filter((r) => !r.isOther)
+      .reduce((s, r) => s + r.amount, 0);
+    const otherCharged = financeRows
+      .filter((r) => r.isOther)
+      .reduce((s, r) => s + r.amount, 0);
     return {
       totalBilled,
       totalCollected,
@@ -82,8 +196,10 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
       approvedAmount: paid.reduce((s, p) => s + Number(p.amount), 0),
       rejectedCount: rejected.length,
       pendingCount: pending.length,
+      waterFeeCharged,
+      otherCharged,
     };
-  }, [bills, payments]);
+  }, [bills, payments, financeRows]);
 
   const billStatusSlices = useMemo(() => {
     const map = new Map<string, number>();
@@ -119,11 +235,54 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
       .slice(-6)
       .map(([key, v]) => ({
         key,
-        label: key,
+        label: new Date(key + "-01T12:00:00").toLocaleDateString(undefined, {
+          month: "short",
+          year: "numeric",
+        }),
         value: v.billed,
         collected: v.collected,
       }));
   }, [bills]);
+
+  const periodTitle = useMemo(() => {
+    const now = new Date();
+    return now.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  }, []);
+
+  const downloadReport = () => {
+    const generated = new Date().toLocaleString();
+    const slug = (activeMembership?.tenant.slug || "report").replace(/[^\w-]+/g, "-");
+    const feeLabel = simplifiedWater ? "Water fee" : "Utility fee";
+
+    downloadTablePdf({
+      fileName: `${slug}-${kind}-finance-${range}.pdf`,
+      title: `Finance Status Report - ${periodTitle}`,
+      subtitle: companyName,
+      meta: [
+        `Period: ${rangeLabel(range)}`,
+        `Collected: ${money(totals.totalCollected)} | ${feeLabel}: ${money(totals.waterFeeCharged)} | Other: ${money(totals.otherCharged)} | Outstanding: ${money(totals.totalOutstanding)}`,
+        `Generated: ${generated}`,
+      ],
+      tables: [
+        {
+          title: "Charges",
+          headers: ["Customer Name", "Account No.", "Type", "Date", "Status", "Amount"],
+          colWeights: [1.8, 1.2, 1.2, 1.1, 0.9, 0.9],
+          rows:
+            financeRows.length > 0
+              ? financeRows.map((r) => [
+                  r.customerName,
+                  r.accountNumber,
+                  r.chargeType,
+                  r.dateLabel,
+                  r.statusLabel,
+                  money(r.amount),
+                ])
+              : [["No charges in this period", "—", "—", "—", "—", "—"]],
+        },
+      ],
+    });
+  };
 
   if (!tenantId || !matchesKind) {
     return (
@@ -139,27 +298,42 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
       </div>
     );
   }
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
+  if (loading) {
+    return <AppLoading message="Loading reports…" fullScreen={false} />;
+  }
+
+  const feeLabel = simplifiedWater ? "Water fee" : "Utility fee";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">{label} reports</h2>
+          <h2 className="font-display text-2xl font-bold text-foreground">
+            {simplifiedWater ? "Reports" : `${label} reports`}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Collections, arrears, and verification outcomes for this company.
+            {simplifiedWater
+              ? "Collections, outstanding balances, and payment outcomes for this water company."
+              : "Collections, arrears, and verification outcomes for this company."}
           </p>
         </div>
-        <select
-          className="h-9 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
-          value={range}
-          onChange={(e) => setRange(e.target.value as RangeKey)}
-        >
-          <option value="30d">Last 30 days</option>
-          <option value="90d">Last 90 days</option>
-          <option value="365d">Last year</option>
-          <option value="all">All time</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="h-9 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
+            value={range}
+            onChange={(e) => setRange(e.target.value as RangeKey)}
+            aria-label="Report period"
+          >
+            <option value="30d">Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+            <option value="365d">Last year</option>
+            <option value="all">All time</option>
+          </select>
+          <Button type="button" variant="secondary" onClick={downloadReport}>
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -168,10 +342,15 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total billed" value={money(totals.totalBilled)} icon={FileText} accent="navy" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Collected (bill paid)"
+          label={simplifiedWater ? "Total charged" : "Total billed"}
+          value={money(totals.totalBilled)}
+          icon={FileText}
+          accent="navy"
+        />
+        <MetricCard
+          label={simplifiedWater ? "Collected" : "Collected (bill paid)"}
           value={money(totals.totalCollected)}
           icon={CreditCard}
           accent="green"
@@ -190,24 +369,11 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
         />
       </div>
 
-      <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card px-4 py-3">
-          Approved payment volume:{" "}
-          <span className="font-semibold text-foreground">{money(totals.approvedAmount)}</span>
-        </div>
-        <div className="rounded-xl border border-border bg-card px-4 py-3">
-          Pending verification:{" "}
-          <span className="font-semibold text-foreground">{totals.pendingCount}</span>
-        </div>
-        <div className="rounded-xl border border-border bg-card px-4 py-3">
-          Rejected payments:{" "}
-          <span className="font-semibold text-foreground">{totals.rejectedCount}</span>
-        </div>
-      </div>
-
       <div className="grid gap-3 xl:grid-cols-2">
         <section className="rounded-xl border border-border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Billing totals by month</h3>
+          <h3 className="mb-3 text-sm font-semibold text-foreground">
+            {simplifiedWater ? "Charges by month" : "Billing totals by month"}
+          </h3>
           <BarChart
             points={billingVsCollections.map((p) => ({
               key: p.key,
@@ -218,21 +384,9 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
             highlightColor="var(--color-brand-green)"
             height={180}
             formatValue={(n) => money(n)}
-            emptyLabel="No bills in this period"
+            emptyLabel={simplifiedWater ? "No charges in this period" : "No bills in this period"}
             showValues={false}
           />
-          {billingVsCollections.length > 0 && (
-            <ul className="mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-              {billingVsCollections.map((p) => (
-                <li key={p.key} className="flex justify-between gap-2">
-                  <span>{p.label}</span>
-                  <span>
-                    Billed {money(p.value)} · Collected {money(p.collected)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
@@ -253,30 +407,77 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
         </section>
       </div>
 
-      <section className="rounded-xl border border-border bg-card">
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="border-b border-border px-5 py-4">
-          <h3 className="font-semibold text-foreground">Breakdown by status</h3>
+          <h3 className="font-display text-lg font-bold text-foreground">
+            Finance Status Report - {periodTitle}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">{companyName}</p>
+          <p className="mt-2 text-sm text-foreground">
+            <span className="text-muted-foreground">Collected:</span>{" "}
+            <span className="font-semibold tabular-nums">{money(totals.totalCollected)}</span>
+            <span className="mx-2 text-muted-foreground">|</span>
+            <span className="text-muted-foreground">{feeLabel}:</span>{" "}
+            <span className="font-semibold tabular-nums">{money(totals.waterFeeCharged)}</span>
+            <span className="mx-2 text-muted-foreground">|</span>
+            <span className="text-muted-foreground">Other:</span>{" "}
+            <span className="font-semibold tabular-nums">{money(totals.otherCharged)}</span>
+            <span className="mx-2 text-muted-foreground">|</span>
+            <span className="text-muted-foreground">Outstanding:</span>{" "}
+            <span className="font-semibold tabular-nums">{money(totals.totalOutstanding)}</span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Reference date: {formatReportDate(new Date().toISOString())} · {rangeLabel(range)}
+          </p>
         </div>
-        {billStatusSlices.length === 0 ? (
-          <div className="px-5 py-10 text-sm text-muted-foreground">No bills generated yet.</div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {billStatusSlices.map((s) => {
-              const balance = bills
-                .filter((b) => b.status === s.key)
-                .reduce((sum, b) => sum + Number(b.balance), 0);
-              return (
-                <li key={s.key} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <Badge tone={statusTone(s.key as BillStatus)}>{s.label}</Badge>
-                  <div className="text-right">
-                    <div className="font-medium text-foreground">{s.value} bills</div>
-                    <div className="text-muted-foreground">Balance {money(balance)}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead
+              className="border-b border-border text-xs uppercase tracking-wide text-foreground"
+              style={{
+                background: `color-mix(in srgb, ${chartColor} 18%, transparent)`,
+              }}
+            >
+              <tr>
+                <th className="px-5 py-3 font-semibold">Customer Name</th>
+                <th className="px-5 py-3 font-semibold">Account No.</th>
+                <th className="px-5 py-3 font-semibold">Type</th>
+                <th className="px-5 py-3 font-semibold">Date</th>
+                <th className="px-5 py-3 font-semibold">Status</th>
+                <th className="px-5 py-3 font-semibold text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {financeRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-muted-foreground">
+                    No charges in this period.
+                  </td>
+                </tr>
+              ) : (
+                financeRows.map((r, i) => (
+                  <tr
+                    key={r.id}
+                    className={i % 2 === 1 ? "bg-muted/30" : undefined}
+                  >
+                    <td className="px-5 py-3 font-medium text-foreground">{r.customerName}</td>
+                    <td className="px-5 py-3 tabular-nums text-muted-foreground">
+                      {r.accountNumber}
+                    </td>
+                    <td className="px-5 py-3 text-foreground">{r.chargeType}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{r.dateLabel}</td>
+                    <td className="px-5 py-3">
+                      <Badge tone={statusTone(r.statusKey as BillStatus)}>{r.statusLabel}</Badge>
+                    </td>
+                    <td className="px-5 py-3 text-right font-semibold tabular-nums text-foreground">
+                      {money(r.amount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

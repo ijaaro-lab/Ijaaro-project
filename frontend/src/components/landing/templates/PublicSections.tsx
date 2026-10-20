@@ -10,15 +10,15 @@ export function servicesForTenantType(tenantType: TenantType): ServiceItem[] {
     return [
       {
         title: "Customer accounts",
-        body: "Manage water service accounts linked to your customers.",
+        body: "Create and manage customer accounts for your water company.",
       },
       {
-        title: "Meter readings",
-        body: "Capture and review meter readings for accurate billing.",
+        title: "Finance & payments",
+        body: "Record payments, track balances, and approve pending submissions.",
       },
       {
-        title: "Water billing",
-        body: "Issue bills and track payment status for your company only.",
+        title: "Reports",
+        body: "View collections, outstanding balances, and payment outcomes for your company.",
       },
     ];
   }

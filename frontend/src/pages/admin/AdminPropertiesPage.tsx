@@ -3,17 +3,20 @@ import { Link } from "react-router-dom";
 import {
   Building2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Home,
   Landmark,
+  Search,
   Tag,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
-import { money, statusTone } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { tenantSubdomainLabel, tenantWorkspaceUrl } from "@/lib/tenant";
-import type { Property, PropertyStatus } from "@/types/database";
+import type { Property } from "@/types/database";
 import {
   AdminEmpty,
   AdminError,
@@ -22,23 +25,21 @@ import {
   AdminPageHeader,
   AdminSectionTitle,
   AdminTableCard,
-  TENANT_EMBED,
   adminTableHeadClass,
-  filterSelectClassName,
   statusBadgeTone,
-  type TenantRef,
   type WorkspaceTenant,
 } from "./shared";
 
-type PropertyRow = Property & { tenants: TenantRef | null };
+const PAGE_SIZE = 10;
 
 export function AdminPropertiesPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceTenant[]>([]);
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
-  const [rows, setRows] = useState<PropertyRow[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"all" | PropertyStatus>("all");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,9 +56,9 @@ export function AdminPropertiesPage() {
         .eq("status", "active"),
       supabase
         .from("properties")
-        .select(`*, ${TENANT_EMBED}`)
+        .select("id, tenant_id, status, is_listed")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(500),
     ]);
 
     const err = tenantsRes.error || membershipsRes.error || propsRes.error;
@@ -69,7 +70,7 @@ export function AdminPropertiesPage() {
       counts[row.tenant_id] = (counts[row.tenant_id] ?? 0) + 1;
     }
     setMemberCounts(counts);
-    setRows((propsRes.data as PropertyRow[] | null) ?? []);
+    setProperties((propsRes.data as Property[] | null) ?? []);
     setLoading(false);
   }, []);
 
@@ -78,52 +79,50 @@ export function AdminPropertiesPage() {
   }, [load]);
 
   const propsByTenant = useMemo(() => {
-    const map: Record<string, PropertyRow[]> = {};
-    for (const p of rows) {
-      (map[p.tenant_id] ??= []).push(p);
+    const map: Record<string, number> = {};
+    for (const p of properties) {
+      map[p.tenant_id] = (map[p.tenant_id] ?? 0) + 1;
     }
     return map;
-  }, [rows]);
-
-  const filtered = useMemo(
-    () =>
-      statusFilter === "all"
-        ? rows
-        : rows.filter((r) => r.status === statusFilter),
-    [rows, statusFilter],
-  );
+  }, [properties]);
 
   const stats = useMemo(
     () => ({
       workspaces: workspaces.length,
-      total: filtered.length,
-      listed: filtered.filter((r) => r.is_listed).length,
-      occupied: filtered.filter((r) => r.status === "occupied").length,
-      available: filtered.filter((r) => r.status === "available").length,
+      total: properties.length,
+      listed: properties.filter((r) => r.is_listed).length,
+      occupied: properties.filter((r) => r.status === "occupied").length,
+      available: properties.filter((r) => r.status === "available").length,
     }),
-    [workspaces.length, filtered],
+    [workspaces.length, properties],
   );
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workspaces;
+    return workspaces.filter((t) => {
+      const hay = `${t.name} ${t.slug} ${t.subdomain ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [workspaces, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const rangeFrom = filtered.length === 0 ? 0 : pageStart + 1;
+  const rangeTo = Math.min(pageStart + PAGE_SIZE, filtered.length);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Platform · Properties"
         title="Properties"
-        description="Landlord workspaces and their property inventory across the platform."
-        actions={
-          <Select
-            className={filterSelectClassName()}
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value as "all" | PropertyStatus)
-            }
-          >
-            <option value="all">All property statuses</option>
-            <option value="available">Available</option>
-            <option value="occupied">Occupied</option>
-            <option value="vacant">Vacant</option>
-          </Select>
-        }
+        description="Landlord workspaces and property counts across the platform."
       />
 
       <AdminKpiRow>
@@ -147,9 +146,7 @@ export function AdminPropertiesPage() {
         />
         <AdminKpi
           label="Occupied / Available"
-          value={
-            loading ? "—" : `${stats.occupied} / ${stats.available}`
-          }
+          value={loading ? "—" : `${stats.occupied} / ${stats.available}`}
           icon={stats.occupied > 0 ? Home : CheckCircle2}
           accent="amber"
         />
@@ -157,11 +154,19 @@ export function AdminPropertiesPage() {
 
       {error && <AdminError message={error} />}
 
-      <AdminTableCard
-        footer={
-          !loading ? `${workspaces.length} landlord workspace(s)` : undefined
-        }
-      >
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search workspace name, slug…"
+          className="pl-9"
+          aria-label="Search workspaces"
+        />
+      </div>
+
+      <AdminTableCard>
         <AdminSectionTitle
           title="Landlord workspaces"
           description="Tenants that can create and manage properties"
@@ -192,10 +197,16 @@ export function AdminPropertiesPage() {
                   </AdminEmpty>
                 </td>
               </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6}>
+                  <AdminEmpty>No workspaces match “{search.trim()}”.</AdminEmpty>
+                </td>
+              </tr>
             ) : (
-              workspaces.map((t) => {
+              pageRows.map((t) => {
                 const key = t.subdomain || t.slug;
-                const propCount = propsByTenant[t.id]?.length ?? 0;
+                const propCount = propsByTenant[t.id] ?? 0;
                 return (
                   <tr
                     key={t.id}
@@ -239,81 +250,39 @@ export function AdminPropertiesPage() {
             )}
           </tbody>
         </table>
-      </AdminTableCard>
-
-      <AdminTableCard footer={!loading ? `${filtered.length} properties` : undefined}>
-        <AdminSectionTitle
-          title="Property inventory"
-          description="Units created inside landlord workspaces"
-        />
-        <table className="w-full text-left text-sm">
-          <thead className={adminTableHeadClass()}>
-            <tr>
-              <th className="px-4 py-3 font-medium">Property</th>
-              <th className="px-4 py-3 font-medium">Workspace</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Rent</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5}>
-                  <AdminEmpty>Loading…</AdminEmpty>
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={5}>
-                  <AdminEmpty>
-                    {workspaces.length > 0
-                      ? "Landlord workspaces exist, but none have added properties yet."
-                      : "No properties yet. Landlord workspaces create them."}
-                  </AdminEmpty>
-                </td>
-              </tr>
-            ) : (
-              filtered.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-t border-border/70 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-foreground">
-                      {p.name || p.address_line}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {[p.district, p.city].filter(Boolean).join(", ") ||
-                        p.address_line}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.tenants ? (
-                      <Link
-                        to={`/app/admin/tenants/${p.tenant_id}`}
-                        className="font-medium text-brand-blue hover:underline"
-                      >
-                        {p.tenants.name}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 capitalize text-muted-foreground">
-                    {p.property_type}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {money(p.rent_amount, p.currency)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone(p.status)}>{p.status}</Badge>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {!loading && filtered.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Showing {rangeFrom}–{rangeTo} of {filtered.length} workspace
+              {filtered.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Previous
+              </Button>
+              <span className="min-w-[5.5rem] text-center text-xs font-medium text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </AdminTableCard>
     </div>
   );

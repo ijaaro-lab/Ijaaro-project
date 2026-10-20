@@ -7,6 +7,7 @@ import {
   LandingLoginCard,
 } from "@/components/landing/LandingLoginCard";
 import { TenantLandingTemplate } from "@/components/landing/templates";
+import { AppLoading } from "@/components/ui/app-loading";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/theme/ThemeProvider";
 import {
@@ -226,11 +227,7 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
   };
 
   if (loading || authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading workspace…
-      </div>
-    );
+    return <AppLoading message="Loading workspace…" />;
   }
 
   if (notFound || !workspace) {

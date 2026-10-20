@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { AppLoading } from "@/components/ui/app-loading";
 import type { AppRole } from "@/types/database";
 import {
   readTenantSlugFromHost,
@@ -11,11 +12,7 @@ export function ProtectedRoute() {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading session…
-      </div>
-    );
+    return <AppLoading message="Loading session…" />;
   }
 
   if (!session) {
@@ -56,11 +53,7 @@ export function SuperAdminRoute() {
   const { isSuperAdmin, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Checking authorization…
-      </div>
-    );
+    return <AppLoading message="Checking authorization…" fullScreen={false} />;
   }
 
   if (!isSuperAdmin) {
@@ -85,11 +78,7 @@ export function RoleRoute({
   const { loading, memberships, isSuperAdmin } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Checking authorization…
-      </div>
-    );
+    return <AppLoading message="Checking authorization…" fullScreen={false} />;
   }
 
   // Platform Super Admin uses /app/admin only — never tenant role areas.
