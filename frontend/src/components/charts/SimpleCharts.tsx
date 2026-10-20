@@ -99,21 +99,17 @@ export function DonutChart({
           )}
         </div>
       </div>
-      <ul className="w-full min-w-0 space-y-2.5">
+      <ul className="grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
         {slices.map((slice) => {
           const pct = total > 0 ? Math.round((slice.value / total) * 1000) / 10 : 0;
           return (
-            <li key={slice.key} className="flex items-center gap-2.5 text-sm">
+            <li key={slice.key} className="flex items-center gap-2 text-sm">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: slice.color }}
               />
-              <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-                {slice.label}
-              </span>
-              <span className="tabular-nums text-muted-foreground">
-                {pct}% · {slice.value}
-              </span>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">{slice.label}</span>
+              <span className="shrink-0 tabular-nums font-semibold text-foreground">{pct}%</span>
             </li>
           );
         })}
@@ -133,6 +129,7 @@ type BarChartProps = {
   className?: string;
   emptyLabel?: string;
   showValues?: boolean;
+  formatValue?: (value: number) => string;
 };
 
 export function BarChart({
@@ -143,8 +140,10 @@ export function BarChart({
   className,
   emptyLabel = "No data yet",
   showValues = true,
+  formatValue,
 }: BarChartProps) {
   const max = Math.max(...points.map((p) => p.value), 1);
+  const display = (n: number) => (formatValue ? formatValue(n) : String(n));
 
   if (points.length === 0) {
     return (
@@ -172,19 +171,19 @@ export function BarChart({
               className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
             >
               {showValues && p.value > 0 && (
-                <span className="text-xs font-semibold tabular-nums text-foreground">
-                  {p.value}
+                <span className="max-w-full truncate text-[10px] font-semibold tabular-nums text-foreground sm:text-xs">
+                  {display(p.value)}
                 </span>
               )}
               <div
-                className="w-full max-w-[44px] rounded-t-lg transition-[height] duration-500"
+                className="w-full max-w-[52px] rounded-t-xl transition-[height] duration-500"
                 style={{
                   height: `${h}%`,
                   background: isPeak ? highlightColor : color,
                   minHeight: p.value > 0 ? 8 : 2,
                   opacity: p.value > 0 ? 1 : 0.35,
                 }}
-                title={`${p.label}: ${p.value}`}
+                title={`${p.label}: ${display(p.value)}`}
               />
             </div>
           );

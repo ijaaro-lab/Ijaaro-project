@@ -13,6 +13,8 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
   const tenantId = activeMembership?.tenant_id;
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isStaff = activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
+  /** Backend `can_approve_utility` is admin-only — keep UI aligned with RLS/RPC. */
+  const canApprove = activeMembership?.role === "utility_admin";
   const label = KIND_LABEL[kind];
 
   const [rows, setRows] = useState<UtilityPayment[]>([]);
@@ -71,13 +73,20 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
       </div>
 
       {!isStaff && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Your role can view payments, but approve/reject requires utility_admin or utility_staff.
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          Your role can view payments, but review actions require company staff access.
+        </div>
+      )}
+      {isStaff && !canApprove && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          You can view the queue. Approve/reject is limited to utility admins for this company.
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
       )}
 
       <div className="space-y-3">
@@ -100,11 +109,11 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
               <Badge tone={statusTone(p.status)}>{p.status}</Badge>
             </div>
 
-            {p.status === "pending" && isStaff && (
+            {p.status === "pending" && canApprove && (
               <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-4">
                 <div className="min-w-[220px] flex-1">
                   <Input
-                    placeholder="Rejection reason (optional)"
+                    placeholder="Rejection reason (required to reject)"
                     value={reasons[p.id] ?? ""}
                     onChange={(e) => setReasons({ ...reasons, [p.id]: e.target.value })}
                   />
@@ -112,14 +121,32 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                 <Button
                   variant="secondary"
                   disabled={busyId === p.id}
-                  onClick={() => void review(p.id, "approve")}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Approve this ${label.toLowerCase()} payment of ${money(p.amount, p.currency)}?`,
+                      )
+                    ) {
+                      return;
+                    }
+                    void review(p.id, "approve");
+                  }}
                 >
                   Approve
                 </Button>
                 <Button
                   variant="destructive"
-                  disabled={busyId === p.id}
-                  onClick={() => void review(p.id, "reject")}
+                  disabled={busyId === p.id || !(reasons[p.id] ?? "").trim()}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Reject this ${label.toLowerCase()} payment? The payer will see your reason.`,
+                      )
+                    ) {
+                      return;
+                    }
+                    void review(p.id, "reject");
+                  }}
                 >
                   Reject
                 </Button>

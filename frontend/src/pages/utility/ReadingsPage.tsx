@@ -29,7 +29,11 @@ export function ReadingsPage({ kind }: { kind: UtilityKind }) {
   const [form, setForm] = useState({
     meter_id: "",
     reading_value: "",
-    reading_date: new Date().toISOString().slice(0, 10),
+    reading_date: (() => {
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    })(),
     status: "valid" as ReadingStatus,
     correction_reason: "",
     notes: "",

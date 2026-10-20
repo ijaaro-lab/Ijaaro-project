@@ -53,10 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshMemberships = useCallback(async () => {
+    const {
+      data: { session: current },
+    } = await supabase.auth.getSession();
+    const userId = current?.user?.id;
+    if (!userId) {
+      setMemberships([]);
+      return;
+    }
+
+    // RLS lets company admins/staff read other members' rows (for Staff UI).
+    // Always constrain the session switcher to the signed-in user only.
     const { data } = await supabase
       .from("tenant_memberships")
       .select("*, tenant:tenants(*)")
-      .eq("status", "active");
+      .eq("status", "active")
+      .eq("user_id", userId);
 
     const rows = ((data ?? []) as Array<TenantMembership & { tenant: Tenant | Tenant[] | null }>).map(
       (row) => {

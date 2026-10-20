@@ -20,7 +20,7 @@ type SelectedProperty = {
 };
 
 export function CustomersPage({ kind }: { kind: UtilityKind }) {
-  const { activeMembership } = useAuth();
+  const { activeMembership, user } = useAuth();
   const tenantId = activeMembership?.tenant_id;
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isStaff = activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
@@ -127,17 +127,18 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
 
   const createPremises = async (e: FormEvent) => {
     e.preventDefault();
-    if (!tenantId) return;
-    if (!createForm.address_line.trim() || !createForm.owner_id.trim()) {
-      setError("Address and owner user ID are required");
+    if (!tenantId || !user) return;
+    if (!createForm.address_line.trim()) {
+      setError("Address is required");
       return;
     }
+    const ownerId = createForm.owner_id.trim() || user.id;
     setSaving(true);
     setError(null);
     const { data, error: err } = await supabase.rpc("create_utility_premises", {
       p_company_tenant_id: tenantId,
       p_address_line: createForm.address_line.trim(),
-      p_owner_id: createForm.owner_id.trim(),
+      p_owner_id: ownerId,
       p_name: createForm.name.trim() || null,
       p_district: createForm.district.trim() || null,
       p_city: createForm.city.trim() || null,
@@ -208,13 +209,25 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
 
   const filtered = rows.filter((a) => a.account_number.toLowerCase().includes(q.trim().toLowerCase()));
 
+  const tenantSearch = activeMembership?.tenant.slug
+    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
+    : "";
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-2xl font-bold">{label} customers</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Link premises to utility accounts and manage {label.toLowerCase()} customers.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-bold">{label} customers</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage linked accounts. To add a new house with a monthly fee, use Houses.
+          </p>
+        </div>
+        <Link
+          to={`/app/${kind}/connections${tenantSearch}`}
+          className="rounded-lg bg-brand-navy px-3 py-2 text-sm font-medium text-white hover:bg-brand-navy/90 dark:bg-brand-water dark:text-brand-navy"
+        >
+          Add house
+        </Link>
       </div>
 
       {error && (
@@ -227,9 +240,13 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
       )}
 
       <section className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold">Link a new utility account</h3>
+        <h3 className="font-semibold">Link account to an existing house</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Step 1: find an existing IJAARO property, or register new premises. Step 2: link the utility account.
+          Advanced: search a house already on the platform, then attach a customer account. Prefer{" "}
+          <Link to={`/app/${kind}/connections${tenantSearch}`} className="font-medium underline">
+            Houses → Add house
+          </Link>{" "}
+          for new {label.toLowerCase()} service points.
         </p>
 
         {!selectedProperty && (
@@ -248,7 +265,7 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
                 {searching ? "Searching…" : "Search"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setCreateMode((v) => !v)}>
-                {createMode ? "Cancel new premises" : "No match? Register premises"}
+                {createMode ? "Cancel" : "Register house here"}
               </Button>
             </form>
 
@@ -282,15 +299,15 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="cowner">Owner user ID (UUID) *</Label>
+                  <Label htmlFor="cowner">Owner user ID (optional)</Label>
                   <Input
                     id="cowner"
-                    required
                     value={createForm.owner_id}
                     onChange={(e) => setCreateForm({ ...createForm, owner_id: e.target.value })}
+                    placeholder="Leave empty to use your account"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Profile email search is restricted by RLS to self-only; ask the owner for their account UUID.
+                    Defaults to you. Or paste another user&apos;s UUID if they already have an account.
                   </p>
                 </div>
                 <div>

@@ -248,7 +248,7 @@ export type UtilityBill = {
   tenant_id: string;
   utility_account_id: string;
   property_id: string;
-  meter_reading_id: string;
+  meter_reading_id: string | null;
   service_type: ServiceType;
   period_start: string;
   period_end: string;
@@ -507,6 +507,19 @@ export type Database = {
         };
         Returns: TenantMembership;
       };
+      list_company_member_profiles: {
+        Args: { p_tenant_id: string };
+        Returns: Array<{
+          membership_id: string;
+          user_id: string;
+          full_name: string | null;
+          email: string | null;
+          phone: string | null;
+          role: AppRole;
+          membership_status: MembershipStatus;
+          created_at: string;
+        }>;
+      };
       assign_renter: {
         Args: {
           p_property_id: string;
@@ -603,6 +616,48 @@ export type Database = {
           p_period_end: string;
           p_due_date?: string | null;
           p_unit_price?: number | null;
+        };
+        Returns: UtilityBill;
+      };
+      register_utility_house: {
+        Args: {
+          p_company_tenant_id: string;
+          p_address_line: string;
+          p_account_number: string;
+          p_monthly_amount: number;
+          p_name?: string | null;
+          p_district?: string | null;
+          p_city?: string | null;
+          p_contact_phone?: string | null;
+          p_contact_email?: string | null;
+          p_customer_email?: string | null;
+          p_meter_number?: string | null;
+          p_property_type?: PropertyType;
+        };
+        Returns: {
+          house: Pick<
+            Property,
+            | "id"
+            | "name"
+            | "address_line"
+            | "district"
+            | "city"
+            | "contact_phone"
+            | "contact_email"
+            | "property_type"
+            | "status"
+          >;
+          account: UtilityAccount;
+          meter: Meter | null;
+          monthly_amount: number;
+        };
+      };
+      generate_flat_utility_bill: {
+        Args: {
+          p_utility_account_id: string;
+          p_period_start: string;
+          p_period_end: string;
+          p_due_date?: string | null;
         };
         Returns: UtilityBill;
       };

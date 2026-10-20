@@ -83,7 +83,9 @@ export function BillsPage({ kind }: { kind: UtilityKind }) {
     );
   }
 
-  const billedReadingIds = new Set(bills.map((b) => b.meter_reading_id));
+  const billedReadingIds = new Set(
+    bills.map((b) => b.meter_reading_id).filter((id): id is string => Boolean(id)),
+  );
   const billableReadings = readings.filter((r) => !billedReadingIds.has(r.id));
 
   const describeReading = (r: MeterReading) => {
@@ -127,7 +129,8 @@ export function BillsPage({ kind }: { kind: UtilityKind }) {
       <div>
         <h2 className="font-display text-2xl font-bold">{label} bills</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Generate bills from accepted meter readings. Total = (units × unit price) + extra charges.
+          Flat monthly bills are issued from Houses. This page lists all bills and can also generate
+          meter-based bills (units × unit price + extras).
         </p>
       </div>
 
@@ -215,6 +218,7 @@ export function BillsPage({ kind }: { kind: UtilityKind }) {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
+                <th className="px-4 py-3 font-semibold">Account</th>
                 <th className="px-4 py-3 font-semibold">Period</th>
                 <th className="px-4 py-3 font-semibold">Units</th>
                 <th className="px-4 py-3 font-semibold">Total</th>
@@ -224,20 +228,32 @@ export function BillsPage({ kind }: { kind: UtilityKind }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {bills.map((b) => (
-                <tr key={b.id} className="hover:bg-muted/40">
-                  <td className="px-4 py-3">
-                    {b.period_start} → {b.period_end}
-                  </td>
-                  <td className="px-4 py-3">{b.units_consumed}</td>
-                  <td className="px-4 py-3">{money(b.total_amount)}</td>
-                  <td className="px-4 py-3">{money(b.balance)}</td>
-                  <td className="px-4 py-3">{b.due_date}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone(b.status)}>{b.status}</Badge>
-                  </td>
-                </tr>
-              ))}
+              {bills.map((b) => {
+                const account = accounts.find((a) => a.id === b.utility_account_id);
+                const units =
+                  b.meter_reading_id == null
+                    ? "Flat"
+                    : b.units_consumed == null
+                      ? "—"
+                      : String(b.units_consumed);
+                return (
+                  <tr key={b.id} className="hover:bg-muted/40">
+                    <td className="px-4 py-3 font-medium">
+                      {account?.account_number ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {b.period_start} → {b.period_end}
+                    </td>
+                    <td className="px-4 py-3">{units}</td>
+                    <td className="px-4 py-3">{money(b.total_amount)}</td>
+                    <td className="px-4 py-3">{money(b.balance)}</td>
+                    <td className="px-4 py-3">{b.due_date}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone={statusTone(b.status)}>{b.status}</Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

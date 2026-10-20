@@ -45,6 +45,10 @@ import { PaymentsReviewPage as UtilityPaymentsReviewPage } from "@/pages/utility
 import { ReportsPage } from "@/pages/utility/ReportsPage";
 import { CustomerBillsPage } from "@/pages/utility/CustomerBillsPage";
 import { CustomerPaymentsPage } from "@/pages/utility/CustomerPaymentsPage";
+import { ConnectionsPage } from "@/pages/utility/ConnectionsPage";
+import { StaffPage } from "@/pages/utility/StaffPage";
+import { NotificationsPage } from "@/pages/utility/NotificationsPage";
+import { CompanySettingsPage } from "@/pages/utility/CompanySettingsPage";
 import { AccountPage } from "@/pages/AccountPage";
 import { WorkspaceBrandingPage } from "@/pages/WorkspaceBrandingPage";
 
@@ -143,11 +147,15 @@ export default function App() {
                 <Route path="water" element={<UtilityDashboard kind="water" />} />
                 <Route path="water/customers" element={<CustomersPage kind="water" />} />
                 <Route path="water/customers/:id" element={<CustomerDetailPage kind="water" />} />
+                <Route path="water/connections" element={<ConnectionsPage kind="water" />} />
                 <Route path="water/meters" element={<MetersPage kind="water" />} />
                 <Route path="water/readings" element={<ReadingsPage kind="water" />} />
                 <Route path="water/bills" element={<BillsPage kind="water" />} />
                 <Route path="water/payments" element={<UtilityPaymentsReviewPage kind="water" />} />
+                <Route path="water/staff" element={<StaffPage kind="water" />} />
                 <Route path="water/reports" element={<ReportsPage kind="water" />} />
+                <Route path="water/notifications" element={<NotificationsPage kind="water" />} />
+                <Route path="water/settings" element={<CompanySettingsPage kind="water" />} />
                 <Route path="water/my-bills" element={<CustomerBillsPage kind="water" />} />
                 <Route path="water/my-payments" element={<CustomerPaymentsPage kind="water" />} />
               </Route>
@@ -168,11 +176,15 @@ export default function App() {
                 <Route path="electricity" element={<UtilityDashboard kind="electricity" />} />
                 <Route path="electricity/customers" element={<CustomersPage kind="electricity" />} />
                 <Route path="electricity/customers/:id" element={<CustomerDetailPage kind="electricity" />} />
+                <Route path="electricity/connections" element={<ConnectionsPage kind="electricity" />} />
                 <Route path="electricity/meters" element={<MetersPage kind="electricity" />} />
                 <Route path="electricity/readings" element={<ReadingsPage kind="electricity" />} />
                 <Route path="electricity/bills" element={<BillsPage kind="electricity" />} />
                 <Route path="electricity/payments" element={<UtilityPaymentsReviewPage kind="electricity" />} />
+                <Route path="electricity/staff" element={<StaffPage kind="electricity" />} />
                 <Route path="electricity/reports" element={<ReportsPage kind="electricity" />} />
+                <Route path="electricity/notifications" element={<NotificationsPage kind="electricity" />} />
+                <Route path="electricity/settings" element={<CompanySettingsPage kind="electricity" />} />
                 <Route path="electricity/my-bills" element={<CustomerBillsPage kind="electricity" />} />
                 <Route path="electricity/my-payments" element={<CustomerPaymentsPage kind="electricity" />} />
               </Route>
