@@ -38,9 +38,13 @@ import type {
 } from "@/types/database";
 import { ModalCloseButton, ModalShell } from "./DirectoryUi";
 import {
+  companyFallbackName,
   isBillPeriodOpen,
+  isSimplifiedFinance,
   KIND_LABEL,
   KIND_TENANT_TYPE,
+  monthlyFeeLabel,
+  serviceLabel,
   type UtilityKind,
 } from "./shared";
 
@@ -78,7 +82,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
   // Admin and staff both review customer/ops submissions; bill balance updates only on approve.
   const canApprove = isOps;
   const label = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
   const tenantSearch = activeMembership?.tenant.slug
     ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
     : "";
@@ -403,7 +407,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
     const companyName =
       brandingString(branding, "display_name") ||
       activeMembership?.tenant.name ||
-      "Water company";
+      companyFallbackName(kind);
     const companyPhone = brandingString(branding, "contact_phone");
     const companyEmail = brandingString(branding, "contact_email");
     const companyAddress = brandingString(branding, "address");
@@ -880,7 +884,11 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
           <section className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-brand-water" />
+                <Wallet
+                  className={
+                    kind === "water" ? "h-4 w-4 text-brand-water" : "h-4 w-4 text-brand-power"
+                  }
+                />
                 <div>
                   <h3 className="font-semibold text-foreground">Customer Billing Status</h3>
                   <p className="text-xs text-muted-foreground">
@@ -1332,7 +1340,8 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
             />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add another fee (not the monthly water fee). This increases what the customer owes.
+            Add another fee (not the monthly {label.toLowerCase()} fee). This
+            increases what the customer owes.
           </p>
           <form onSubmit={(e) => void submitCharge(e)} className="mt-5 space-y-4">
             <div>
@@ -1549,8 +1558,10 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                   "display_name",
                 ) ||
                 activeMembership?.tenant.name ||
-                "Water company"
+                companyFallbackName(kind)
               }
+              serviceName={serviceLabel(kind)}
+              feeLabel={monthlyFeeLabel(kind)}
               companyPhone={brandingString(
                 (activeMembership?.tenant.branding ?? {}) as Record<string, unknown>,
                 "contact_phone",
@@ -1774,13 +1785,13 @@ function TabButton({
   );
 }
 
-function billDescription(b: UtilityBill): string {
+function billDescription(b: UtilityBill, feeLabel = "Fee"): string {
   const snap = (b.occupancy_snapshot ?? {}) as Record<string, unknown>;
   if (typeof snap.description === "string" && snap.description.trim()) {
     return snap.description.trim();
   }
   if (snap.billing_mode === "adhoc_charge") return "Other charge";
-  return `Water fee · ${b.period_start} → ${b.period_end}`;
+  return `${feeLabel} · ${b.period_start} → ${b.period_end}`;
 }
 
 function billEditLabel(b: UtilityBill): string {
@@ -1802,6 +1813,8 @@ function InvoicePanel({
   companyPhone,
   companyEmail,
   companyLogo,
+  serviceName,
+  feeLabel,
   onClose,
   onSystemChange,
 }: {
@@ -1814,6 +1827,8 @@ function InvoicePanel({
   companyPhone: string;
   companyEmail: string;
   companyLogo: string;
+  serviceName: string;
+  feeLabel: string;
   onClose: () => void;
   onSystemChange: () => Promise<void>;
 }) {
@@ -1915,7 +1930,7 @@ function InvoicePanel({
     }
     lines.push(
       { text: "", size: 8 },
-      { text: "Service: Water service", size: 11 },
+      { text: `Service: ${serviceName}`, size: 11 },
       { text: `Monthly fee: ${money(monthlyFee(account))}`, size: 10 },
       { text: "", size: 8 },
       { text: "Description                                          Amount", size: 10, bold: true },
@@ -1925,7 +1940,7 @@ function InvoicePanel({
     } else {
       for (const b of visibleBills) {
         const amt = money(b.total_amount);
-        const desc = billDescription(b);
+        const desc = billDescription(b, feeLabel);
         const pad = Math.max(1, 48 - desc.length);
         lines.push({ text: `${desc}${" ".repeat(Math.min(pad, 8))} ${amt}`, size: 10 });
       }
@@ -2019,7 +2034,7 @@ function InvoicePanel({
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-muted-foreground">
               Service
             </p>
-            <p className="mt-1 font-semibold">Water service</p>
+            <p className="mt-1 font-semibold">{serviceName}</p>
             <p className="text-sm text-slate-600 dark:text-muted-foreground">
               Monthly fee: {money(monthlyFee(account))}
             </p>
@@ -2044,7 +2059,7 @@ function InvoicePanel({
               ) : (
                 visibleBills.map((b) => (
                   <tr key={b.id}>
-                    <td className="py-2 pr-3">{billDescription(b)}</td>
+                    <td className="py-2 pr-3">{billDescription(b, feeLabel)}</td>
                     <td className="py-2 text-right tabular-nums">{money(b.total_amount)}</td>
                   </tr>
                 ))

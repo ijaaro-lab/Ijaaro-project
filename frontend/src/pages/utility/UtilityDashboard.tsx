@@ -32,8 +32,10 @@ import type {
 } from "@/types/database";
 import {
   isBillPeriodOpen,
+  isSimplifiedFinance,
   KIND_LABEL,
   KIND_TENANT_TYPE,
+  monthlyFeeLabel,
   type UtilityKind,
 } from "./shared";
 
@@ -97,7 +99,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   const accent = kind === "water" ? "water" : "power";
   const chartColor = kind === "water" ? "#3B82F6" : "var(--color-brand-power)";
   const serviceLabel = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
   const branding = (activeMembership?.tenant.branding ?? {}) as Record<string, unknown>;
   const companyDisplayName =
     brandingString(branding, "display_name") || activeMembership?.tenant.name || serviceLabel;
@@ -523,9 +525,19 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               </p>
             </div>
             <div className="relative w-full sm:w-auto sm:min-w-[20rem]">
-              <Calendar className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-water" />
+              <Calendar
+                className={cn(
+                  "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2",
+                  kind === "water" ? "text-brand-water" : "text-brand-power",
+                )}
+              />
               <select
-                className="h-11 w-full cursor-pointer appearance-none rounded-2xl border border-border/80 bg-card py-2.5 pl-11 pr-10 text-sm font-medium tracking-tight text-foreground shadow-[0_1px_2px_rgba(11,31,58,0.06)] transition hover:border-brand-water/40 focus:border-brand-water focus:outline-none focus:ring-2 focus:ring-brand-water/20 dark:shadow-none"
+                className={cn(
+                  "h-11 w-full cursor-pointer appearance-none rounded-2xl border border-border/80 bg-card py-2.5 pl-11 pr-10 text-sm font-medium tracking-tight text-foreground shadow-[0_1px_2px_rgba(11,31,58,0.06)] transition focus:outline-none focus:ring-2 dark:shadow-none",
+                  kind === "water"
+                    ? "hover:border-brand-water/40 focus:border-brand-water focus:ring-brand-water/20"
+                    : "hover:border-brand-power/40 focus:border-brand-power focus:ring-brand-power/20",
+                )}
                 value={range}
                 onChange={(e) => setRange(e.target.value as RangeKey)}
                 aria-label="Date range"
@@ -726,14 +738,19 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               </h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
                 {simplifiedWater
-                  ? "Your water account balance and payment history."
+                  ? `Your ${serviceLabel.toLowerCase()} account balance and payment history.`
                   : `Your ${serviceLabel.toLowerCase()} account and payment status.`}
               </p>
             </div>
             {simplifiedWater && (
               <Link
                 to={`/app/${kind}/my-payments${tenantSearch}`}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-blue px-4 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-brand-water"
+                className={cn(
+                  "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white transition hover:opacity-90",
+                  kind === "water"
+                    ? "bg-brand-blue dark:bg-brand-water"
+                    : "bg-brand-navy dark:bg-brand-power dark:text-brand-navy",
+                )}
               >
                 <Wallet className="h-4 w-4" />
                 Submit payment
@@ -805,7 +822,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
                           ? snap.description.trim()
                           : snap.billing_mode === "adhoc_charge"
                             ? "Other charge"
-                            : `Water fee · ${b.period_start} → ${b.period_end}`;
+                            : `${monthlyFeeLabel(kind)} · ${b.period_start} → ${b.period_end}`;
                       return (
                         <li
                           key={b.id}

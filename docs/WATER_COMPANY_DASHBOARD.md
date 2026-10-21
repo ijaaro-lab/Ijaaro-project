@@ -20,7 +20,10 @@ Status: implemented on top of Phase 3–4 utility ops (2026-10-19 houses + flat 
 | `/app/water/my-bills` | Customer bills | customer |
 | `/app/water/my-payments` | Customer payments | customer |
 
-Electricity mirrors the same routes under `/app/electricity/*`.
+Electricity mirrors the same routes under `/app/electricity/*` and uses the same
+simplified finance-first sidebar (Overview, Customers, Finance & Payments, Reports,
+Staff, Company Settings) with electricity branding (`#F5C400` / Zap iconography).
+Meter routes remain registered for future use but are not primary nav items.
 
 ## Primary ops flow (flat monthly)
 

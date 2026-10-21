@@ -13,8 +13,10 @@ import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import type { PaymentMethod, UtilityBill, UtilityPayment } from "@/types/database";
 import {
   isBillPeriodOpen,
+  isSimplifiedFinance,
   KIND_LABEL,
   KIND_TENANT_TYPE,
+  monthlyFeeLabel,
   type UtilityKind,
 } from "./shared";
 
@@ -22,8 +24,8 @@ type PayTab = "request" | "history";
 
 const HISTORY_PAGE_SIZE = 8;
 
-function billOptionLabel(b: UtilityBill, simplifiedWater: boolean): string {
-  if (!simplifiedWater) {
+function billOptionLabel(b: UtilityBill, kind: UtilityKind, simplified: boolean): string {
+  if (!simplified) {
     return `Due ${b.due_date} · balance ${money(b.balance)} (${b.status})`;
   }
   const snap = (b.occupancy_snapshot ?? {}) as Record<string, unknown>;
@@ -33,7 +35,7 @@ function billOptionLabel(b: UtilityBill, simplifiedWater: boolean): string {
   if (snap.billing_mode === "adhoc_charge") {
     return `Other charge · ${money(b.balance)}`;
   }
-  return `Water fee · due ${b.due_date} · ${money(b.balance)}`;
+  return `${monthlyFeeLabel(kind)} · due ${b.due_date} · ${money(b.balance)}`;
 }
 
 export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
@@ -43,7 +45,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = tenant?.tenant_type === KIND_TENANT_TYPE[kind];
   const isCustomer = activeMembership?.role === "utility_customer";
   const label = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
 
   const branding = (tenant?.branding ?? {}) as Record<string, unknown>;
   const companyName =
@@ -263,7 +265,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {simplifiedWater
-            ? "Submit a payment you already made. It stays Pending until the water company approves it — only then is it recorded on your balance."
+            ? `Submit a payment you already made. It stays Pending until the ${label.toLowerCase()} company approves it — only then is it recorded on your balance.`
             : "Submissions start as pending. Company staff must approve before the payment is recorded on your bill."}
         </p>
       </div>
@@ -379,7 +381,7 @@ export function CustomerPaymentsPage({ kind }: { kind: UtilityKind }) {
                 </option>
                 {bills.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {billOptionLabel(b, simplifiedWater)}
+                    {billOptionLabel(b, kind, simplifiedWater)}
                   </option>
                 ))}
               </Select>

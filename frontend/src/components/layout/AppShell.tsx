@@ -3,13 +3,10 @@ import { NavLink, Outlet, useLocation, Link, useNavigate } from "react-router-do
 import {
   Activity,
   BarChart3,
-  Bell,
   Building2,
   ClipboardList,
   CreditCard,
   Droplets,
-  FileText,
-  Gauge,
   Home,
   LayoutDashboard,
   LogOut,
@@ -23,7 +20,6 @@ import {
   Shield,
   UserRound,
   Users,
-  Wallet,
   X,
   Zap,
 } from "lucide-react";
@@ -55,57 +51,8 @@ const UTILITY_KIND_TENANT_TYPE: Record<UtilityKind, string> = {
   electricity: "electricity_company",
 };
 
-/** Full ops nav — kept for electricity; water uses the simplified builders below. */
-function utilityStaffNav(kind: UtilityKind): NavItem[] {
+function utilityAdminNav(kind: UtilityKind): NavItem[] {
   const base = `/app/${kind}`;
-  const service = kind === "water" ? "Water" : "Electricity";
-  return [
-    { to: base, label: "Overview", icon: LayoutDashboard, section: "Workspace", end: true },
-    { to: `${base}/customers`, label: "Customers & Accounts", icon: Users, section: "Workspace" },
-    { to: `${base}/connections`, label: "Houses", icon: Home, section: "Workspace" },
-    {
-      to: `${base}/meters`,
-      label: `${service} Meters`,
-      icon: Gauge,
-      section: `${service} Operations`,
-    },
-    {
-      to: `${base}/readings`,
-      label: "Meter Readings",
-      icon: ClipboardList,
-      section: `${service} Operations`,
-    },
-    {
-      to: `${base}/bills`,
-      label: "Bills & Billing",
-      icon: FileText,
-      section: `${service} Operations`,
-    },
-    {
-      to: `${base}/payments`,
-      label: "Payments & Verification",
-      icon: Wallet,
-      section: `${service} Operations`,
-    },
-    {
-      to: `${base}/staff`,
-      label: "Staff & Permissions",
-      icon: Shield,
-      section: "Management",
-    },
-    { to: `${base}/reports`, label: "Reports", icon: BarChart3, section: "Management" },
-    { to: `${base}/notifications`, label: "Notifications", icon: Bell, section: "Management" },
-    {
-      to: `${base}/settings`,
-      label: "Company Settings",
-      icon: Settings,
-      section: "Management",
-    },
-  ];
-}
-
-function waterAdminNav(): NavItem[] {
-  const base = "/app/water";
   return [
     { to: base, label: "Overview", icon: LayoutDashboard, section: "Workspace", end: true },
     { to: `${base}/customers`, label: "Customers", icon: Users, section: "Workspace" },
@@ -121,8 +68,8 @@ function waterAdminNav(): NavItem[] {
   ];
 }
 
-function waterStaffNav(): NavItem[] {
-  const base = "/app/water";
+function utilityStaffNav(kind: UtilityKind): NavItem[] {
+  const base = `/app/${kind}`;
   return [
     { to: base, label: "Overview", icon: LayoutDashboard, section: "Workspace", end: true },
     { to: `${base}/customers`, label: "Customers", icon: Users, section: "Workspace" },
@@ -138,30 +85,21 @@ function waterStaffNav(): NavItem[] {
 
 function utilityCustomerNav(kind: UtilityKind): NavItem[] {
   const base = `/app/${kind}`;
-  if (kind === "water") {
-    return [
-      { to: base, label: "Overview", icon: Droplets, end: true, section: "Workspace" },
-      {
-        to: `${base}/my-payments`,
-        label: "Finance & Payments",
-        icon: CreditCard,
-        section: "Workspace",
-      },
-    ];
-  }
-  const Icon = Zap;
+  const OverviewIcon = kind === "water" ? Droplets : Zap;
   return [
-    { to: base, label: "Electricity dashboard", icon: Icon, end: true },
-    { to: `${base}/my-bills`, label: "My bills", icon: FileText },
-    { to: `${base}/my-payments`, label: "My payments", icon: CreditCard },
+    { to: base, label: "Overview", icon: OverviewIcon, end: true, section: "Workspace" },
+    {
+      to: `${base}/my-payments`,
+      label: "Finance & Payments",
+      icon: CreditCard,
+      section: "Workspace",
+    },
   ];
 }
 
 function utilityOpsNav(kind: UtilityKind, role: AppRole): NavItem[] {
-  if (kind === "water") {
-    if (role === "utility_admin") return waterAdminNav();
-    if (role === "utility_staff") return waterStaffNav();
-  }
+  if (role === "utility_admin") return utilityAdminNav(kind);
+  if (role === "utility_staff") return utilityStaffNav(kind);
   return utilityStaffNav(kind);
 }
 
@@ -270,27 +208,18 @@ function utilityPageTitle(pathname: string, kind: UtilityKind): string | null {
   const base = `/app/${kind}`;
   if (pathname !== base && !pathname.startsWith(`${base}/`)) return null;
   const label = kind === "water" ? "Water" : "Electricity";
-  const simplifiedWater = kind === "water";
-  if (pathname.startsWith(`${base}/customers`)) {
-    return simplifiedWater ? "Customers" : "Customers & Accounts";
-  }
+  if (pathname.startsWith(`${base}/customers`)) return "Customers";
   if (pathname.startsWith(`${base}/connections`)) return "Houses";
   if (pathname.startsWith(`${base}/meters`)) return `${label} Meters`;
   if (pathname.startsWith(`${base}/readings`)) return "Meter Readings";
   if (pathname.startsWith(`${base}/bills`)) return "Bills & Billing";
-  if (pathname.startsWith(`${base}/payments`)) {
-    return simplifiedWater ? "Finance & Payments" : "Payments & Verification";
-  }
-  if (pathname.startsWith(`${base}/staff`)) {
-    return simplifiedWater ? "Staff" : "Staff & Permissions";
-  }
+  if (pathname.startsWith(`${base}/payments`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/staff`)) return "Staff";
   if (pathname.startsWith(`${base}/reports`)) return "Reports";
   if (pathname.startsWith(`${base}/notifications`)) return "Notifications";
   if (pathname.startsWith(`${base}/settings`)) return "Company Settings";
   if (pathname.startsWith(`${base}/my-bills`)) return `My ${label.toLowerCase()} bills`;
-  if (pathname.startsWith(`${base}/my-payments`)) {
-    return simplifiedWater ? "Finance & Payments" : `My ${label.toLowerCase()} payments`;
-  }
+  if (pathname.startsWith(`${base}/my-payments`)) return "Finance & Payments";
   if (pathname === base || pathname === `${base}/`) return "Overview";
   return `${label} Company Workspace`;
 }
@@ -517,6 +446,13 @@ export function AppShell() {
         : "Electricity Company Workspace"
       : tenantDisplay || "Smart Utility Platform";
 
+  const isElectricityWorkspace =
+    isUtilityWorkspace &&
+    activeMembership?.tenant.tenant_type === "electricity_company";
+  const navAccentRing = isElectricityWorkspace
+    ? "shadow-[inset_0_0_0_1px_rgba(245,196,0,0.35)]"
+    : "shadow-[inset_0_0_0_1px_rgba(43,140,255,0.35)]";
+
   const renderSidebar = (opts: { collapsed: boolean; showCollapseToggle: boolean }) => {
     const slim = opts.collapsed;
 
@@ -526,7 +462,11 @@ export function AppShell() {
         slim ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
         "hover:bg-white/10 hover:text-white",
         isActive &&
-          "bg-white/[0.12] text-white shadow-[inset_0_0_0_1px_rgba(43,140,255,0.35)] before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-brand-water",
+          cn(
+            "bg-white/[0.12] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full",
+            navAccentRing,
+            isElectricityWorkspace ? "before:bg-brand-power" : "before:bg-brand-water",
+          ),
       );
 
     return (
@@ -599,8 +539,10 @@ export function AppShell() {
                 >
                   <item.icon
                     className={cn(
-                      "h-[18px] w-[18px] shrink-0 text-brand-water/90 transition group-hover:text-brand-water",
-                      "group-[.active]:text-brand-water",
+                      "h-[18px] w-[18px] shrink-0 transition",
+                      isElectricityWorkspace
+                        ? "text-brand-power/90 group-hover:text-brand-power group-[.active]:text-brand-power"
+                        : "text-brand-water/90 group-hover:text-brand-water group-[.active]:text-brand-water",
                     )}
                   />
                   {!slim && <span className="truncate">{item.label}</span>}
@@ -765,17 +707,6 @@ export function AppShell() {
               >
                 <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
               </button>
-              {isUtilityWorkspace &&
-                activeMembership?.tenant.tenant_type !== "water_company" && (
-                <Link
-                  to={`/app/electricity/notifications${tenantSearch}`}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  title="Notifications"
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-4 w-4" />
-                </Link>
-              )}
             </div>
 
             <div className="hidden h-8 w-px bg-border sm:block" />

@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import type { Meter, MeterReading, UtilityAccount, UtilityBill, UtilityPayment } from "@/types/database";
-import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
+import {
+  isSimplifiedFinance,
+  KIND_LABEL,
+  KIND_TENANT_TYPE,
+  type UtilityKind,
+} from "./shared";
 
 export function CustomerDetailPage({ kind }: { kind: UtilityKind }) {
   const { id } = useParams();
@@ -14,7 +19,7 @@ export function CustomerDetailPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isStaff = activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
   const label = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
   const tenantSearch = activeMembership?.tenant.slug
     ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
     : "";

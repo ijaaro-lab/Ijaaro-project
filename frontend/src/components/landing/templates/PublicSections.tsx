@@ -25,16 +25,16 @@ export function servicesForTenantType(tenantType: TenantType): ServiceItem[] {
   if (tenantType === "electricity_company") {
     return [
       {
-        title: "Electricity accounts",
-        body: "Operate customer accounts for electricity service.",
+        title: "Customer accounts",
+        body: "Create and manage customer accounts for your electricity company.",
       },
       {
-        title: "Meter & consumption",
-        body: "Record readings and retain billing responsibility history.",
+        title: "Finance & payments",
+        body: "Record payments, track balances, and approve pending submissions.",
       },
       {
-        title: "Payment review",
-        body: "Review submitted payments inside your isolated workspace.",
+        title: "Reports",
+        body: "View collections, outstanding balances, and payment outcomes for your company.",
       },
     ];
   }

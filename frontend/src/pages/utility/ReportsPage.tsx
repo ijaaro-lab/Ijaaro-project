@@ -10,7 +10,13 @@ import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import { downloadTablePdf } from "@/lib/simplePdf";
 import { supabase } from "@/lib/supabase";
 import type { BillStatus, UtilityAccount, UtilityBill, UtilityPayment } from "@/types/database";
-import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
+import {
+  isSimplifiedFinance,
+  KIND_LABEL,
+  KIND_TENANT_TYPE,
+  monthlyFeeLabel,
+  type UtilityKind,
+} from "./shared";
 
 type RangeKey = "30d" | "90d" | "365d" | "all";
 
@@ -58,7 +64,11 @@ function formatReportDate(iso: string) {
   });
 }
 
-function billChargeType(bill: UtilityBill, simplifiedWater: boolean): { label: string; isOther: boolean } {
+function billChargeType(
+  bill: UtilityBill,
+  kind: UtilityKind,
+  simplified: boolean,
+): { label: string; isOther: boolean } {
   const snap = bill.occupancy_snapshot ?? {};
   const description =
     typeof snap.description === "string" ? snap.description.trim() : "";
@@ -67,9 +77,9 @@ function billChargeType(bill: UtilityBill, simplifiedWater: boolean): { label: s
     return { label: description, isOther };
   }
   if (snap.billing_mode === "adhoc_charge") {
-    return { label: simplifiedWater ? "Other charge" : "Ad-hoc charge", isOther: true };
+    return { label: simplified ? "Other charge" : "Ad-hoc charge", isOther: true };
   }
-  return { label: simplifiedWater ? "Water fee" : "Utility fee", isOther: false };
+  return { label: simplified ? monthlyFeeLabel(kind) : "Utility fee", isOther: false };
 }
 
 function billStatusLabel(status: string, simplifiedWater: boolean) {
@@ -87,7 +97,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
   const isStaff =
     activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
   const label = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
   const chartColor = kind === "water" ? "var(--color-brand-water)" : "var(--color-brand-power)";
   const companyName =
     activeMembership?.tenant.name || `${label} company`;
@@ -134,7 +144,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
         setError(null);
         setBills(billRes.data ?? []);
         setPayments(payRes.data ?? []);
-        setAccounts((accRes.data as AccountLite[]) ?? []);
+        setAccounts((accRes.data as unknown as AccountLite[]) ?? []);
       }
       setLoading(false);
     })();
@@ -158,7 +168,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
           account?.properties?.name?.trim() ||
           account?.properties?.address_line?.trim() ||
           "Customer";
-        const { label: chargeType, isOther } = billChargeType(b, simplifiedWater);
+        const { label: chargeType, isOther } = billChargeType(b, kind, simplifiedWater);
         return {
           id: b.id,
           customerName,
@@ -172,7 +182,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
           isPaid: b.status === "paid" || Number(b.balance) <= 0,
         };
       });
-  }, [bills, accountById, simplifiedWater]);
+  }, [bills, accountById, kind, simplifiedWater]);
 
   const totals = useMemo(() => {
     const totalBilled = bills.reduce((s, b) => s + Number(b.total_amount), 0);
@@ -252,7 +262,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
   const downloadReport = () => {
     const generated = new Date().toLocaleString();
     const slug = (activeMembership?.tenant.slug || "report").replace(/[^\w-]+/g, "-");
-    const feeLabel = simplifiedWater ? "Water fee" : "Utility fee";
+    const feeLabel = simplifiedWater ? monthlyFeeLabel(kind) : "Utility fee";
 
     downloadTablePdf({
       fileName: `${slug}-${kind}-finance-${range}.pdf`,
@@ -302,7 +312,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
     return <AppLoading message="Loading reports…" fullScreen={false} />;
   }
 
-  const feeLabel = simplifiedWater ? "Water fee" : "Utility fee";
+  const feeLabel = simplifiedWater ? monthlyFeeLabel(kind) : "Utility fee";
 
   return (
     <div className="space-y-6">
@@ -313,7 +323,7 @@ export function ReportsPage({ kind }: { kind: UtilityKind }) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {simplifiedWater
-              ? "Collections, outstanding balances, and payment outcomes for this water company."
+              ? `Collections, outstanding balances, and payment outcomes for this ${label.toLowerCase()} company.`
               : "Collections, arrears, and verification outcomes for this company."}
           </p>
         </div>

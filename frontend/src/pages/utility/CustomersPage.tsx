@@ -29,7 +29,12 @@ import {
   ModalCloseButton,
   ModalShell,
 } from "./DirectoryUi";
-import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
+import {
+  isSimplifiedFinance,
+  KIND_LABEL,
+  KIND_TENANT_TYPE,
+  type UtilityKind,
+} from "./shared";
 
 type SelectedProperty = {
   id: string;
@@ -100,7 +105,7 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
     activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
   const isAdmin = activeMembership?.role === "utility_admin";
   const label = KIND_LABEL[kind];
-  const simplifiedWater = kind === "water";
+  const simplifiedWater = isSimplifiedFinance(kind);
   const createTitleId = useId();
   const editTitleId = useId();
 
@@ -521,7 +526,7 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {simplifiedWater
-              ? "Create and manage customer accounts for your water company."
+              ? `Create and manage customer accounts for your ${label.toLowerCase()} company.`
               : "Manage linked accounts. To add a new house with a monthly fee, use Houses."}
           </p>
         </div>
@@ -758,7 +763,11 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
         <section className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-brand-water" />
+              <Users
+                className={
+                  kind === "water" ? "h-4 w-4 text-brand-water" : "h-4 w-4 text-brand-power"
+                }
+              />
               <div>
                 <h3 className="font-semibold text-foreground">Customer Directory</h3>
                 <p className="text-xs text-muted-foreground">
@@ -1209,16 +1218,7 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
         fields={
           createdCustomer
             ? [
-                { label: "Name", value: createdCustomer.name, copyable: false },
                 { label: "Email", value: createdCustomer.email },
-                { label: "Phone", value: createdCustomer.phone },
-                {
-                  label: "Account Number",
-                  value: createdCustomer.accountNumber,
-                  mono: true,
-                },
-                { label: "Monthly Fee", value: createdCustomer.monthlyFee, copyable: false },
-                { label: "Address", value: createdCustomer.address, copyable: false },
                 {
                   label: "Temporary Password",
                   value: createdCustomer.password,
