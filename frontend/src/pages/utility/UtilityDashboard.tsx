@@ -19,11 +19,28 @@ import { BarChart, DonutChart } from "@/components/charts/SimpleCharts";
 import { AppLoading } from "@/components/ui/app-loading";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
+import { brandingString } from "@/lib/landingTemplates";
 import { supabase } from "@/lib/supabase";
 import { money, paymentStatusLabel, statusTone } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { MeterReading, UtilityBill, UtilityPayment } from "@/types/database";
-import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
+import type {
+  ExtraChargesConfig,
+  MeterReading,
+  UtilityAccount,
+  UtilityBill,
+  UtilityPayment,
+} from "@/types/database";
+import {
+  isBillPeriodOpen,
+  KIND_LABEL,
+  KIND_TENANT_TYPE,
+  type UtilityKind,
+} from "./shared";
+
+function accountMonthlyFee(account: UtilityAccount): number {
+  const cfg = (account.extra_charges_config ?? {}) as ExtraChargesConfig;
+  return Number(cfg.fixed_amount ?? 0);
+}
 
 type RangeKey = "7d" | "30d" | "90d";
 type ChartSpan = "6m" | "3m";
@@ -81,6 +98,11 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   const chartColor = kind === "water" ? "#3B82F6" : "var(--color-brand-power)";
   const serviceLabel = KIND_LABEL[kind];
   const simplifiedWater = kind === "water";
+  const branding = (activeMembership?.tenant.branding ?? {}) as Record<string, unknown>;
+  const companyDisplayName =
+    brandingString(branding, "display_name") || activeMembership?.tenant.name || serviceLabel;
+  const companyPhone = brandingString(branding, "contact_phone");
+  const companyEmail = brandingString(branding, "contact_email");
 
   const [range, setRange] = useState<RangeKey>("30d");
   const [chartSpan, setChartSpan] = useState<ChartSpan>("6m");
@@ -105,6 +127,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
 
   const [customerBills, setCustomerBills] = useState<UtilityBill[]>([]);
   const [customerPayments, setCustomerPayments] = useState<UtilityPayment[]>([]);
+  const [customerAccounts, setCustomerAccounts] = useState<UtilityAccount[]>([]);
 
   useEffect(() => {
     if (!tenantId || !matchesKind) {
@@ -267,7 +290,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
         } else if (isCustomer && user) {
           const { data: accounts, error: accErr } = await supabase
             .from("utility_accounts")
-            .select("id")
+            .select("*")
             .eq("tenant_id", tenantId)
             .eq("customer_id", user.id);
           if (cancelled) return;
@@ -275,7 +298,8 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
             setError(accErr.message);
             return;
           }
-          const accountIds = (accounts ?? []).map((a) => a.id);
+          const accountRows = (accounts ?? []) as UtilityAccount[];
+          const accountIds = accountRows.map((a) => a.id);
           const [byAccount, byResp, payRes] = await Promise.all([
             accountIds.length > 0
               ? supabase.from("utility_bills").select("*").in("utility_account_id", accountIds)
@@ -290,8 +314,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
               .select("*")
               .eq("tenant_id", tenantId)
               .eq("payer_id", user.id)
-              .order("submitted_at", { ascending: false })
-              .limit(simplifiedWater ? 10 : 5),
+              .order("submitted_at", { ascending: false }),
           ]);
           if (cancelled) return;
           if (byAccount.error || byResp.error || payRes.error) {
@@ -301,6 +324,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
           } else {
             const merged = new Map<string, UtilityBill>();
             for (const b of [...(byAccount.data ?? []), ...(byResp.data ?? [])]) merged.set(b.id, b);
+            setCustomerAccounts(accountRows);
             setCustomerBills(
               Array.from(merged.values()).sort((a, b) => a.due_date.localeCompare(b.due_date)),
             );
@@ -406,6 +430,64 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
 
   const lastMonthLabel = collectionPoints[collectionPoints.length - 1]?.label ?? "period";
   const prevMonthLabel = collectionPoints[collectionPoints.length - 2]?.label ?? "prior";
+
+  const openCustomerBills = useMemo(
+    () =>
+      customerBills
+        .filter(
+          (b) =>
+            Number(b.balance) > 0 &&
+            b.status !== "cancelled" &&
+            isBillPeriodOpen(b),
+        )
+        .sort((a, b) => a.due_date.localeCompare(b.due_date)),
+    [customerBills],
+  );
+  const customerOutstanding = useMemo(
+    () => openCustomerBills.reduce((s, b) => s + Number(b.balance), 0),
+    [openCustomerBills],
+  );
+  const customerMonthlyFeeTotal = useMemo(
+    () => customerAccounts.reduce((s, a) => s + accountMonthlyFee(a), 0),
+    [customerAccounts],
+  );
+
+  const customerStatusSlices = useMemo(() => {
+    const paid = customerPayments.filter((p) => p.status === "paid").length;
+    const pending = customerPayments.filter((p) => p.status === "pending").length;
+    const rejected = customerPayments.filter((p) => p.status === "rejected").length;
+    return [
+      { key: "paid", label: "Approved", value: paid, color: "#22C55E" },
+      { key: "pending", label: "Pending", value: pending, color: "#F59E0B" },
+      { key: "rejected", label: "Rejected", value: rejected, color: "#EF4444" },
+    ].filter((s) => s.value > 0);
+  }, [customerPayments]);
+
+  const customerStatusTotal = customerStatusSlices.reduce((s, x) => s + x.value, 0);
+
+  const customerPaymentPoints = useMemo(() => {
+    const months = chartSpan === "6m" ? 6 : 3;
+    const buckets = new Map<string, number>();
+    const start = monthsAgoStart(months);
+    for (let i = 0; i < months; i++) {
+      const d = new Date(start);
+      d.setMonth(d.getMonth() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets.set(key, 0);
+    }
+    for (const p of customerPayments) {
+      if (p.status !== "paid") continue;
+      const ts = p.reviewed_at || p.submitted_at;
+      if (!ts) continue;
+      const key = monthKey(ts);
+      if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + Number(p.amount));
+    }
+    return Array.from(buckets.entries()).map(([key, value]) => ({
+      key,
+      label: new Date(key + "-01T12:00:00").toLocaleDateString(undefined, { month: "short" }),
+      value,
+    }));
+  }, [customerPayments, chartSpan]);
 
   if (!tenantId || !matchesKind) {
     return (
@@ -637,25 +719,32 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
 
       {isCustomer && (
         <>
-          <header>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
-              Overview
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {simplifiedWater
-                ? "Your water account balance and payment history."
-                : `Your ${serviceLabel.toLowerCase()} account and payment status.`}
-            </p>
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+                Overview
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {simplifiedWater
+                  ? "Your water account balance and payment history."
+                  : `Your ${serviceLabel.toLowerCase()} account and payment status.`}
+              </p>
+            </div>
+            {simplifiedWater && (
+              <Link
+                to={`/app/${kind}/my-payments${tenantSearch}`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-blue px-4 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-brand-water"
+              >
+                <Wallet className="h-4 w-4" />
+                Submit payment
+              </Link>
+            )}
           </header>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <MetricCard
               label={simplifiedWater ? "My accounts" : "Open bills"}
-              value={
-                simplifiedWater
-                  ? accountCount
-                  : customerBills.filter((b) => b.balance > 0).length
-              }
+              value={simplifiedWater ? accountCount : openCustomerBills.length}
               icon={Home}
               accent="warning"
               to={
@@ -666,7 +755,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
             />
             <MetricCard
               label="Outstanding balance"
-              value={money(customerBills.reduce((s, b) => s + Number(b.balance), 0))}
+              value={money(customerOutstanding)}
               icon={Wallet}
               accent={accent}
               to={`/app/${kind}/my-payments${tenantSearch}`}
@@ -680,10 +769,132 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
             />
           </div>
 
+          {simplifiedWater && (
+            <section className="rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none">
+              <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5">
+                <h3 className="font-display text-sm font-semibold text-foreground">
+                  What you owe
+                </h3>
+                {customerOutstanding > 0 && (
+                  <Link
+                    to={`/app/${kind}/my-payments${tenantSearch}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-brand-blue hover:underline dark:text-brand-water"
+                  >
+                    Submit payment
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
+              </div>
+              {openCustomerBills.length === 0 ? (
+                <div className="px-4 py-5 text-sm text-muted-foreground">
+                  No open charges.
+                  {customerMonthlyFeeTotal > 0
+                    ? ` Monthly fee ${money(customerMonthlyFeeTotal)}.`
+                    : ""}
+                  {customerAccounts[0]
+                    ? ` Account ${customerAccounts[0].account_number}.`
+                    : ""}
+                </div>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border/80">
+                    {openCustomerBills.map((b) => {
+                      const snap = (b.occupancy_snapshot ?? {}) as Record<string, unknown>;
+                      const desc =
+                        typeof snap.description === "string" && snap.description.trim()
+                          ? snap.description.trim()
+                          : snap.billing_mode === "adhoc_charge"
+                            ? "Other charge"
+                            : `Water fee · ${b.period_start} → ${b.period_end}`;
+                      return (
+                        <li
+                          key={b.id}
+                          className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-medium text-foreground">{desc}</div>
+                            <div className="text-muted-foreground">Due {b.due_date}</div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                              {money(b.balance)}
+                            </div>
+                            <Badge tone={statusTone(b.status)}>{b.status}</Badge>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {(companyPhone || companyEmail) && (
+                    <div className="border-t border-border/80 bg-sky-50/50 px-4 py-3 text-sm dark:bg-sky-500/10">
+                      <p className="font-medium text-foreground">
+                        Pay to {companyDisplayName}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {[companyPhone, companyEmail].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
+          {/* Customer charts */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="flex min-h-[300px] flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] sm:p-5 dark:border-border dark:shadow-none">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-display text-sm font-semibold text-foreground">
+                    Approved payments
+                  </h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Monthly total</p>
+                </div>
+                <ChartSpanSelect value={chartSpan} onChange={setChartSpan} />
+              </div>
+              <BarChart
+                points={customerPaymentPoints}
+                color={chartColor}
+                highlightColor={chartColor}
+                height={180}
+                formatValue={(n) => money(n)}
+                emptyLabel="No approved payments yet"
+                showValues={false}
+                className="min-h-[160px] flex-1"
+              />
+            </section>
+
+            <section className="flex min-h-[300px] flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.05)] sm:p-5 dark:border-border dark:shadow-none">
+              <div className="mb-4">
+                <h3 className="font-display text-sm font-semibold text-foreground">
+                  Payment status
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Pending, approved, rejected
+                </p>
+              </div>
+              {customerStatusSlices.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground">
+                  No payment requests yet
+                </div>
+              ) : (
+                <DonutChart
+                  slices={customerStatusSlices}
+                  size={150}
+                  thickness={20}
+                  centerLabel="Total"
+                  centerValue={formatCount(customerStatusTotal)}
+                  showCounts
+                  className="flex-1 !flex-col !items-center justify-center gap-4"
+                />
+              )}
+            </section>
+          </div>
+
           <section className="rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none">
             <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5">
               <h3 className="font-display text-sm font-semibold text-foreground">
-                {simplifiedWater ? "Payment history" : "My bills"}
+                {simplifiedWater ? "Recent payments" : "My bills"}
               </h3>
               <Link
                 to={`/app/${kind}/my-payments${tenantSearch}`}
@@ -695,21 +906,34 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
             </div>
             {simplifiedWater ? (
               customerPayments.length === 0 ? (
-                <div className="px-4 py-5 text-sm text-muted-foreground">No payments yet.</div>
+                <div className="px-4 py-5 text-sm text-muted-foreground">
+                  No payments yet.
+                </div>
               ) : (
                 <ul className="divide-y divide-border/80">
-                  {customerPayments.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                      <div>
-                        <div className="font-medium text-foreground">
+                  {customerPayments.slice(0, 5).map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium tabular-nums text-foreground">
                           {money(p.amount, p.currency)}
                         </div>
-                        <div className="text-muted-foreground">
+                        <div className="text-xs capitalize text-muted-foreground">
+                          {p.method.replaceAll("_", " ")}
+                          {" · "}
                           {new Date(p.submitted_at).toLocaleString()}
-                          {p.rejection_reason ? ` · ${p.rejection_reason}` : ""}
                         </div>
+                        {p.rejection_reason ? (
+                          <div className="text-xs text-red-600 dark:text-red-300">
+                            {p.rejection_reason}
+                          </div>
+                        ) : null}
                       </div>
-                      <Badge tone={statusTone(p.status)}>{paymentStatusLabel(p.status)}</Badge>
+                      <Badge tone={statusTone(p.status)}>
+                        {paymentStatusLabel(p.status)}
+                      </Badge>
                     </li>
                   ))}
                 </ul>

@@ -753,7 +753,7 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
   });
 
   it(
-    "19. utility_staff can register pending payment but cannot approve",
+    "19. utility_staff can register pending payment and approve (records balance)",
     async () => {
       const wa = await asUser(emails.waA, password);
       const { data: reg, error: regErr } = await wa.rpc("register_utility_house", {
@@ -790,13 +790,6 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
       expect(registered.payer_id).toBe(ids.custA);
       ids.staffRegisteredPay = registered.id;
 
-      // Staff must NOT be able to approve
-      const { error: approveErr } = await staff.rpc("review_utility_payment", {
-        p_payment_id: ids.staffRegisteredPay,
-        p_decision: "approve",
-      });
-      expect(approveErr).toBeTruthy();
-
       // Cross-tenant admin cannot register on another company's bill
       const otherAdmin = await asUser(emails.waB, password);
       const { error: crossErr } = await otherAdmin.rpc("register_utility_payment_by_ops", {
@@ -806,13 +799,14 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
       });
       expect(crossErr).toBeTruthy();
 
-      // Admin can approve the staff-registered payment
-      const { data: reviewed, error: ok } = await wa.rpc("review_utility_payment", {
+      // Staff can approve — balance updates only after approve
+      const { data: reviewed, error: ok } = await staff.rpc("review_utility_payment", {
         p_payment_id: ids.staffRegisteredPay,
         p_decision: "approve",
       });
       expect(ok).toBeNull();
       expect(reviewed.payment.status).toBe("paid");
+      expect(Number(reviewed.bill.amount_paid)).toBe(20);
     },
     30_000,
   );

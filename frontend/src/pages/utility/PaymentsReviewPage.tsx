@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import {
+  CalendarPlus,
   CreditCard,
   DollarSign,
   Download,
@@ -25,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { brandingString } from "@/lib/landingTemplates";
 import { money, paymentStatusLabel, statusTone } from "@/lib/format";
-import { downloadTextPdf } from "@/lib/simplePdf";
+import { downloadTablePdf, downloadTextPdf } from "@/lib/simplePdf";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type {
@@ -36,7 +37,12 @@ import type {
   UtilityPayment,
 } from "@/types/database";
 import { ModalCloseButton, ModalShell } from "./DirectoryUi";
-import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
+import {
+  isBillPeriodOpen,
+  KIND_LABEL,
+  KIND_TENANT_TYPE,
+  type UtilityKind,
+} from "./shared";
 
 type AccountRow = UtilityAccount & {
   properties?: {
@@ -69,7 +75,8 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isOps =
     activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
-  const canApprove = activeMembership?.role === "utility_admin";
+  // Admin and staff both review customer/ops submissions; bill balance updates only on approve.
+  const canApprove = isOps;
   const label = KIND_LABEL[kind];
   const simplifiedWater = kind === "water";
   const tenantSearch = activeMembership?.tenant.slug
@@ -77,6 +84,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
     : "";
   const payTitleId = useId();
   const chargeTitleId = useId();
+  const monthsTitleId = useId();
   const invoiceTitleId = useId();
 
   const [rows, setRows] = useState<UtilityPayment[]>([]);
@@ -88,7 +96,13 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<"billing" | "pending">("billing");
+  const [tab, setTab] = useState<"billing" | "pending" | "history">("billing");
+  const [billingFilter, setBillingFilter] = useState<"all" | "owes" | "paid">("all");
+  const [historyQ, setHistoryQ] = useState("");
+  const [chargingAccountId, setChargingAccountId] = useState<string | null>(null);
+  const [showMonthsModal, setShowMonthsModal] = useState(false);
+  const [monthsAccount, setMonthsAccount] = useState<AccountRow | null>(null);
+  const [monthsCount, setMonthsCount] = useState("5");
 
   // Legacy electricity register form
   const [showRegister, setShowRegister] = useState(false);
@@ -201,9 +215,15 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
+  /** Open bills whose month has started (future assigned months are excluded). */
+  const dueOpenBills = useMemo(
+    () => openBills.filter((b) => isBillPeriodOpen(b)),
+    [openBills],
+  );
+
   const billingRows = useMemo(() => {
     return accounts.map((a) => {
-      const billsFor = openBills.filter((b) => b.utility_account_id === a.id);
+      const billsFor = dueOpenBills.filter((b) => b.utility_account_id === a.id);
       const balance = billsFor.reduce((s, b) => s + Number(b.balance), 0);
       const paidApproved = rows
         .filter((p) => p.utility_account_id === a.id && p.status === "paid")
@@ -213,17 +233,47 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
         balance <= 0 ? "paid" : hasOverdue ? "overdue" : billsFor.length > 0 ? "due" : "clear";
       return { account: a, balance, paidApproved, billsFor, status };
     });
-  }, [accounts, openBills, rows]);
+  }, [accounts, dueOpenBills, rows]);
 
   const filteredBilling = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return billingRows;
-    return billingRows.filter(({ account: a }) =>
+    let list = billingRows;
+    if (billingFilter === "owes") {
+      list = list.filter((r) => r.balance > 0);
+    } else if (billingFilter === "paid") {
+      list = list.filter((r) => r.balance <= 0);
+    }
+    if (!needle) return list;
+    return list.filter(({ account: a }) =>
       [a.account_number, a.properties?.name, a.properties?.address_line, a.properties?.contact_phone]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(needle)),
     );
-  }, [billingRows, q]);
+  }, [billingRows, q, billingFilter]);
+
+  const accountLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of accounts) {
+      const name = a.properties?.name?.trim() || a.properties?.address_line?.trim() || "Customer";
+      map.set(a.id, `${name} (${a.account_number})`);
+    }
+    return map;
+  }, [accounts]);
+
+  const filteredHistory = useMemo(() => {
+    const needle = historyQ.trim().toLowerCase();
+    if (!needle) return rows;
+    return rows.filter((p) => {
+      const customer = accountLabelById.get(p.utility_account_id) ?? "";
+      return (
+        customer.toLowerCase().includes(needle) ||
+        p.status.toLowerCase().includes(needle) ||
+        p.method.replaceAll("_", " ").includes(needle) ||
+        (p.reference ?? "").toLowerCase().includes(needle) ||
+        String(p.amount).includes(needle)
+      );
+    });
+  }, [rows, historyQ, accountLabelById]);
 
   const totals = useMemo(() => {
     const collected = rows
@@ -232,15 +282,179 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
     const pending = rows
       .filter((p) => p.status === "pending")
       .reduce((s, p) => s + Number(p.amount), 0);
-    const outstanding = openBills.reduce((s, b) => s + Number(b.balance), 0);
+    const outstanding = dueOpenBills.reduce((s, b) => s + Number(b.balance), 0);
     const overdueCount = billingRows.filter((r) => r.status === "overdue").length;
-    return { collected, pending, outstanding, overdueCount };
-  }, [rows, openBills, billingRows]);
+    const owingCustomers = billingRows.filter((r) => r.balance > 0).length;
+    const paidUpCustomers = billingRows.filter((r) => r.balance <= 0).length;
+    return { collected, pending, outstanding, overdueCount, owingCustomers, paidUpCustomers };
+  }, [rows, dueOpenBills, billingRows]);
 
   const pendingRows = useMemo(
     () => rows.filter((p) => p.status === "pending"),
     [rows],
   );
+
+  const openMonthsModal = (account: AccountRow) => {
+    if (monthlyFee(account) <= 0) {
+      setError(
+        "This customer has no monthly fee set. Edit the customer and set the monthly amount first.",
+      );
+      return;
+    }
+    setError(null);
+    setMsg(null);
+    setMonthsAccount(account);
+    setMonthsCount("5");
+    setShowMonthsModal(true);
+  };
+
+  /**
+   * Assign 1–36 upcoming months at once using the saved monthly fee.
+   * Each month becomes its own bill — customer/form sees that month when it is due;
+   * no need to re-enter the amount later.
+   */
+  const submitMonthsAhead = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!monthsAccount || !isOps) return;
+    const n = Number(monthsCount);
+    if (!Number.isInteger(n) || n < 1 || n > 36) {
+      setError("Enter months between 1 and 36 (e.g. 5 or 20).");
+      return;
+    }
+    setChargingAccountId(monthsAccount.id);
+    setError(null);
+    setMsg(null);
+    const { data, error: err } = await supabase.rpc("issue_flat_bills_months_ahead", {
+      p_utility_account_id: monthsAccount.id,
+      p_months: n,
+      p_from_period_start: null,
+    });
+    setChargingAccountId(null);
+    if (err || !data) {
+      setError(err?.message || "Could not assign months");
+      return;
+    }
+    const result = data as {
+      monthly_fee?: number;
+      issued?: number;
+      already_existed?: number;
+      periods?: Array<{ period_start: string; period_end: string }>;
+    };
+    const first = result.periods?.[0]?.period_start?.slice(0, 7);
+    const last = result.periods?.[result.periods.length - 1]?.period_start?.slice(0, 7);
+    const name =
+      monthsAccount.properties?.name?.trim() ||
+      monthsAccount.properties?.address_line?.trim() ||
+      monthsAccount.account_number;
+    setMsg(
+      `Assigned ${n} month(s) to ${name} at ${money(Number(result.monthly_fee ?? monthlyFee(monthsAccount)))}/month` +
+        (first && last ? ` (${first} → ${last})` : "") +
+        `. New: ${result.issued ?? 0}. Only this month shows on balance until you pay; next months appear when their time comes.`,
+    );
+    setShowMonthsModal(false);
+    setMonthsAccount(null);
+    setBillingFilter("owes");
+    await load();
+  };
+
+  const exportPaymentHistoryCsv = () => {
+    const header = [
+      "Customer",
+      "Account",
+      "Amount",
+      "Currency",
+      "Method",
+      "Reference",
+      "Status",
+      "Submitted",
+      "Approved",
+    ];
+    const lines = filteredHistory.map((p) => {
+      const acc = accounts.find((a) => a.id === p.utility_account_id);
+      const name =
+        acc?.properties?.name?.trim() ||
+        acc?.properties?.address_line?.trim() ||
+        "Customer";
+      const cells = [
+        name,
+        acc?.account_number ?? "",
+        String(p.amount),
+        p.currency,
+        p.method,
+        p.reference ?? "",
+        p.status,
+        p.submitted_at,
+        p.reviewed_at ?? "",
+      ];
+      return cells.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(",");
+    });
+    const csv = [header.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payment-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPaymentHistoryPdf = () => {
+    const branding = (activeMembership?.tenant.branding ?? {}) as Record<string, unknown>;
+    const companyName =
+      brandingString(branding, "display_name") ||
+      activeMembership?.tenant.name ||
+      "Water company";
+    const companyPhone = brandingString(branding, "contact_phone");
+    const companyEmail = brandingString(branding, "contact_email");
+    const companyAddress = brandingString(branding, "address");
+    const fmt = (iso: string) => {
+      const d = new Date(iso);
+      return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+    };
+    const fmtMoney = (amount: number, currency = "USD") => {
+      // PDF Helvetica is ASCII-only; avoid currency symbols that become "?".
+      const n = Number(amount).toFixed(2);
+      return currency === "USD" ? `USD ${n}` : `${currency} ${n}`;
+    };
+
+    downloadTablePdf({
+      fileName: `payment-history-${new Date().toISOString().slice(0, 10)}.pdf`,
+      title: companyName,
+      subtitle: "Payment History Report",
+      meta: [
+        [
+          companyPhone ? `Phone: ${companyPhone}` : null,
+          companyEmail ? `Email: ${companyEmail}` : null,
+        ]
+          .filter(Boolean)
+          .join("  |  ") || "Company payment records",
+        companyAddress ? `Address: ${companyAddress}` : "",
+        `Exported: ${new Date().toLocaleString()}  |  ${filteredHistory.length} record(s)`,
+      ].filter(Boolean),
+      tables: [
+        {
+          headers: ["Customer", "Amount", "Method", "Status", "Submitted", "Approved"],
+          colWeights: [2.2, 1.1, 1.2, 1, 1.6, 1.6],
+          rows: filteredHistory.map((p) => {
+            const acc = accounts.find((a) => a.id === p.utility_account_id);
+            const name =
+              acc?.properties?.name?.trim() ||
+              acc?.properties?.address_line?.trim() ||
+              "Customer";
+            const accountNo = acc?.account_number ? ` (${acc.account_number})` : "";
+            return [
+              `${name}${accountNo}`,
+              fmtMoney(Number(p.amount), p.currency),
+              p.method.replaceAll("_", " "),
+              paymentStatusLabel(p.status),
+              fmt(p.submitted_at),
+              p.reviewed_at ? fmt(p.reviewed_at) : "Pending",
+            ];
+          }),
+        },
+      ],
+    });
+  };
 
   if (!tenantId || !matchesKind) {
     return (
@@ -264,7 +478,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
   };
 
   const accountOutstanding = (accountId: string) =>
-    openBills
+    dueOpenBills
       .filter((b) => b.utility_account_id === accountId)
       .reduce((s, b) => s + Number(b.balance), 0);
 
@@ -283,11 +497,14 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
       setPayForm((f) => ({ ...f, utility_bill_id: "", amount: "" }));
       return null;
     }
-    const list = openRes.data ?? [];
+    // Only months that have started — future assigned months are not payable yet.
+    const list = (openRes.data ?? []).filter((b) => isBillPeriodOpen(b));
     if (list.length === 0) {
       setPayBills([]);
       setPayForm((f) => ({ ...f, utility_bill_id: "", amount: "" }));
-      setError("This customer has no outstanding balance. Use Charge for other fees, or wait until a bill is due.");
+      setError(
+        "No payment due this month. Future months appear when their month starts (after this month is paid).",
+      );
       return null;
     }
     setPayBills(list);
@@ -476,6 +693,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
       payForm.notes.trim() ? `note: ${payForm.notes.trim()}` : "",
       payForm.paid_on ? `date: ${payForm.paid_on}` : "",
     ].filter(Boolean);
+    // Always save as Pending. Balance updates only after Approve on the Pending tab.
     const { data: payment, error: err } = await supabase.rpc(
       "register_utility_payment_by_ops",
       {
@@ -486,36 +704,16 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
         p_proof_path: null,
       },
     );
+    setSaving(false);
     if (err || !payment) {
-      setSaving(false);
       setError(err?.message || "Could not register payment");
       return;
     }
 
-    // Admin recording cash/mobile money: apply immediately.
-    if (canApprove) {
-      const { error: reviewErr } = await supabase.rpc("review_utility_payment", {
-        p_payment_id: payment.id,
-        p_decision: "approve",
-        p_rejection_reason: null,
-      });
-      setSaving(false);
-      if (reviewErr) {
-        setError(
-          `Payment saved as Pending, but approve failed: ${reviewErr.message}`,
-        );
-        closePayModal();
-        await load();
-        return;
-      }
-      setMsg(`Payment of ${money(amount)} recorded and approved.`);
-    } else {
-      setSaving(false);
-      setMsg(
-        `Payment of ${money(amount)} registered as Pending. An admin must approve it.`,
-      );
-    }
-
+    setMsg(
+      `Payment of ${money(amount)} submitted as Pending. Approve it under Pending approvals to record it on the account.`,
+    );
+    setTab("pending");
     closePayModal();
     await load();
   };
@@ -613,8 +811,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
           <div>
             <h2 className="font-display text-2xl font-bold text-foreground">Payments</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Record payment by customer name and account number. The person who owes money
-              and their balance fill in automatically.
+              See who owes or paid, review pending requests, and export payment history.
             </p>
           </div>
           {isOps && (
@@ -627,7 +824,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
 
         {!isOps && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-            Your role can view payments, but recording requires company staff access.
+            Your role can view payments, but recording and approval require company staff access.
           </div>
         )}
 
@@ -659,9 +856,9 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
             hint="Open bill balances"
           />
           <SummaryCard
-            label="Overdue accounts"
-            value={String(totals.overdueCount)}
-            hint="Customers with overdue bills"
+            label="Customers owing"
+            value={String(totals.owingCustomers)}
+            hint={`${totals.paidUpCustomers} paid up`}
           />
         </div>
 
@@ -672,6 +869,10 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
           <TabButton active={tab === "pending"} onClick={() => setTab("pending")}>
             Pending approvals
             {pendingRows.length > 0 ? ` (${pendingRows.length})` : ""}
+          </TabButton>
+          <TabButton active={tab === "history"} onClick={() => setTab("history")}>
+            Payment history
+            {rows.length > 0 ? ` (${rows.length})` : ""}
           </TabButton>
         </div>
 
@@ -688,14 +889,38 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                   </p>
                 </div>
               </div>
-              <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search customer…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-lg border border-border p-0.5 text-xs">
+                  {(
+                    [
+                      ["all", "All"],
+                      ["owes", "Owes"],
+                      ["paid", "Paid up"],
+                    ] as const
+                  ).map(([key, labelText]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setBillingFilter(key)}
+                      className={
+                        billingFilter === key
+                          ? "rounded-md bg-brand-green px-2.5 py-1.5 font-semibold text-white"
+                          : "rounded-md px-2.5 py-1.5 font-medium text-muted-foreground hover:text-foreground"
+                      }
+                    >
+                      {labelText}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search customer…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -756,7 +981,22 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                           </td>
                           <td className="px-5 py-3">{statusBadge(status)}</td>
                           <td className="px-5 py-3">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={chargingAccountId === a.id || monthlyFee(a) <= 0}
+                                title={
+                                  monthlyFee(a) <= 0
+                                    ? "Set a monthly fee on this customer first"
+                                    : "Assign several months ahead (e.g. 5 or 20) at the saved monthly fee"
+                                }
+                                onClick={() => openMonthsModal(a)}
+                              >
+                                <CalendarPlus className="h-3.5 w-3.5" />
+                                Months
+                              </Button>
                               <button
                                 type="button"
                                 className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -785,7 +1025,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                               <button
                                 type="button"
                                 className="rounded-md border border-sky-500/40 p-1.5 text-sky-500 hover:bg-sky-500/10"
-                                title="View invoice"
+                                title="View invoice / payment history"
                                 onClick={() => void openInvoice(a)}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -820,10 +1060,111 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                   onReview={(decision) => void review(p.id, decision)}
                   simplifiedWater
                   label={label}
+                  customerLabel={accountLabelById.get(p.utility_account_id)}
                 />
               ))
             )}
           </div>
+        )}
+
+        {tab === "history" && (
+          <section className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div>
+                <h3 className="font-semibold text-foreground">Payment history</h3>
+                <p className="text-xs text-muted-foreground">
+                  All customer payments · who paid, who is pending, who was rejected
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Search history…"
+                    value={historyQ}
+                    onChange={(e) => setHistoryQ(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={filteredHistory.length === 0}
+                  onClick={exportPaymentHistoryCsv}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={filteredHistory.length === 0}
+                  onClick={exportPaymentHistoryPdf}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+
+            {filteredHistory.length === 0 ? (
+              <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                No payment history yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold">Customer</th>
+                      <th className="px-5 py-3 font-semibold">Amount</th>
+                      <th className="px-5 py-3 font-semibold">Method</th>
+                      <th className="hidden px-5 py-3 font-semibold sm:table-cell">Submitted</th>
+                      <th className="hidden px-5 py-3 font-semibold md:table-cell">Approved</th>
+                      <th className="px-5 py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredHistory.map((p) => (
+                      <tr key={p.id} className="hover:bg-muted/30">
+                        <td className="px-5 py-3">
+                          <div className="font-medium text-foreground">
+                            {accountLabelById.get(p.utility_account_id) ?? "Customer"}
+                          </div>
+                          {p.reference && (
+                            <div className="text-xs text-muted-foreground">
+                              Ref: {p.reference}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 font-semibold tabular-nums">
+                          {money(p.amount, p.currency)}
+                        </td>
+                        <td className="px-5 py-3 capitalize text-muted-foreground">
+                          {p.method.replaceAll("_", " ")}
+                        </td>
+                        <td className="hidden px-5 py-3 text-muted-foreground sm:table-cell">
+                          {new Date(p.submitted_at).toLocaleString()}
+                        </td>
+                        <td className="hidden px-5 py-3 text-muted-foreground md:table-cell">
+                          {p.reviewed_at
+                            ? new Date(p.reviewed_at).toLocaleString()
+                            : "—"}
+                        </td>
+                        <td className="px-5 py-3">
+                          <Badge tone={statusTone(p.status)}>
+                            {paymentStatusLabel(p.status)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         )}
 
         <ModalShell open={showPayModal} onClose={closePayModal} labelledBy={payTitleId}>
@@ -910,12 +1251,8 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
                 <Input
                   id="pay-status"
                   disabled
-                  value={canApprove ? "Completed (Paid)" : "Pending (needs admin)"}
-                  className={
-                    canApprove
-                      ? "font-medium text-emerald-600 dark:text-emerald-400"
-                      : "text-amber-600 dark:text-amber-400"
-                  }
+                  value="Pending — approve to record"
+                  className="font-medium text-amber-600 dark:text-amber-400"
                 />
               </div>
             </div>
@@ -970,7 +1307,7 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
               className="w-full"
               disabled={saving || !payAccount || !payForm.utility_bill_id || payMaxDue <= 0}
             >
-              {saving ? "Saving…" : "Record Payment"}
+              {saving ? "Saving…" : "Submit for approval"}
             </Button>
           </form>
         </ModalShell>
@@ -1095,6 +1432,105 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
         </ModalShell>
 
         <ModalShell
+          open={showMonthsModal}
+          onClose={() => {
+            setShowMonthsModal(false);
+            setMonthsAccount(null);
+          }}
+          labelledBy={monthsTitleId}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <h3 id={monthsTitleId} className="font-display text-xl font-bold text-foreground">
+              Assign months ahead
+            </h3>
+            <ModalCloseButton
+              onClick={() => {
+                setShowMonthsModal(false);
+                setMonthsAccount(null);
+              }}
+            />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choose a duration (e.g. 5 or 20 months) at the saved monthly fee. Only the current
+            month shows on the balance and can be paid. When that month is paid, balance is $0;
+            the next month appears when its time comes — no re-entering amounts.
+          </p>
+          <form onSubmit={(e) => void submitMonthsAhead(e)} className="mt-5 space-y-4">
+            <div>
+              <Label className="normal-case tracking-normal">Customer</Label>
+              <Input
+                disabled
+                value={monthsAccount ? customerLabel(monthsAccount) : ""}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="normal-case tracking-normal">Monthly fee</Label>
+                <Input
+                  disabled
+                  value={
+                    monthsAccount ? money(monthlyFee(monthsAccount)) : ""
+                  }
+                  className="font-semibold"
+                />
+              </div>
+              <div>
+                <Label htmlFor="months-count" className="normal-case tracking-normal">
+                  How many months? *
+                </Label>
+                <Input
+                  id="months-count"
+                  type="number"
+                  min={1}
+                  max={36}
+                  step={1}
+                  required
+                  value={monthsCount}
+                  onChange={(e) => setMonthsCount(e.target.value)}
+                  placeholder="e.g. 5 or 20"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">1 to 36 months</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(["1", "3", "5", "6", "12", "20", "24"] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setMonthsCount(n)}
+                  className={
+                    monthsCount === n
+                      ? "rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white"
+                      : "rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  }
+                >
+                  {n} mo
+                </button>
+              ))}
+            </div>
+            {monthsAccount && Number(monthsCount) > 0 && (
+              <p className="rounded-lg border border-sky-200/80 bg-sky-50/60 px-3 py-2 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100">
+                Total to assign:{" "}
+                <span className="font-semibold">
+                  {money(monthlyFee(monthsAccount) * Number(monthsCount || 0))}
+                </span>{" "}
+                ({monthsCount} x {money(monthlyFee(monthsAccount))})
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="secondary"
+              className="w-full"
+              disabled={Boolean(chargingAccountId) || !monthsAccount}
+            >
+              {chargingAccountId
+                ? "Assigning…"
+                : `Assign ${monthsCount || "…"} month(s)`}
+            </Button>
+          </form>
+        </ModalShell>
+
+        <ModalShell
           open={Boolean(invoiceAccount)}
           onClose={() => setInvoiceAccount(null)}
           labelledBy={invoiceTitleId}
@@ -1162,12 +1598,6 @@ export function PaymentsReviewPage({ kind }: { kind: UtilityKind }) {
           Your role can view payments, but review actions require company staff access.
         </div>
       )}
-      {isOps && !canApprove && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-          You can register and view payments. Approve/Reject is limited to utility admins.
-        </div>
-      )}
-
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
           {error}
@@ -1826,6 +2256,7 @@ function PaymentReviewCard({
   onReview,
   simplifiedWater,
   label,
+  customerLabel,
 }: {
   payment: UtilityPayment;
   canApprove: boolean;
@@ -1835,11 +2266,15 @@ function PaymentReviewCard({
   onReview: (decision: "approve" | "reject") => void;
   simplifiedWater: boolean;
   label: string;
+  customerLabel?: string;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
+          {customerLabel && (
+            <div className="mb-1 text-sm font-medium text-foreground">{customerLabel}</div>
+          )}
           <div className="font-display text-lg font-semibold">
             {money(p.amount, p.currency)}
           </div>

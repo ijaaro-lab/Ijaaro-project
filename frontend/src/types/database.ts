@@ -680,6 +680,42 @@ export type Database = {
         };
         Returns: UtilityBill;
       };
+      issue_monthly_flat_bills_for_tenant: {
+        Args: {
+          p_tenant_id: string;
+          p_period_start?: string | null;
+          p_period_end?: string | null;
+        };
+        Returns: {
+          period_start: string;
+          period_end: string;
+          issued: number;
+          already_existed: number;
+          skipped: number;
+        };
+      };
+      issue_flat_bills_months_ahead: {
+        Args: {
+          p_utility_account_id: string;
+          p_months: number;
+          p_from_period_start?: string | null;
+        };
+        Returns: {
+          utility_account_id: string;
+          monthly_fee: number;
+          months: number;
+          issued: number;
+          already_existed: number;
+          periods: Array<{
+            period_start: string;
+            period_end: string;
+            bill_id: string;
+            amount: number;
+            balance: number;
+            new: boolean;
+          }>;
+        };
+      };
       review_utility_payment: {
         Args: {
           p_payment_id: string;
