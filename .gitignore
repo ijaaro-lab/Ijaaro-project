@@ -9,7 +9,15 @@ frontend/dist/
 .env.*
 !.env.example
 credentials.json
+frontend/.local/
 *.pem
+
+# Local Supabase CLI / tooling artifacts
+supabase/.temp/
+
+# Local smoke and Vitest outputs
+frontend/.smoke-*.json
+frontend/.vitest/
 
 # OS / editor
 .DS_Store

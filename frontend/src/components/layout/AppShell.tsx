@@ -164,10 +164,18 @@ function navForContext(
 
   const items: NavItem[] = [{ to: "/app", label: "Overview", icon: LayoutDashboard, end: true }];
 
-  if (role === "landlord_admin" || role === "landlord_staff") {
+  // Landlord staff: properties-focused workspace only (no ops / staff admin).
+  if (role === "landlord_staff") {
     items.push(
       { to: "/app/landlord", label: "Dashboard", icon: Home },
       { to: "/app/landlord/properties", label: "Properties", icon: Building2 },
+    );
+  }
+  if (role === "landlord_admin") {
+    items.push(
+      { to: "/app/landlord", label: "Dashboard", icon: Home },
+      { to: "/app/landlord/properties", label: "Properties", icon: Building2 },
+      { to: "/app/landlord/staff", label: "Staff", icon: Users },
       { to: "/app/landlord/tenancies", label: "Tenancies", icon: ClipboardList },
       { to: "/app/landlord/payments", label: "Rent review", icon: CreditCard },
     );
@@ -237,6 +245,7 @@ function pageTitle(pathname: string, isSuperAdmin: boolean) {
   if (pathname === "/app/admin" || pathname === "/app/admin/") return "Overview";
   if (pathname.startsWith("/app/admin")) return "Platform dashboard";
   if (pathname.startsWith("/app/landlord/properties")) return "Properties";
+  if (pathname.startsWith("/app/landlord/staff")) return "Landlord staff";
   if (pathname.startsWith("/app/landlord/tenancies")) return "Tenancies";
   if (pathname.startsWith("/app/landlord/payments")) return "Rent payment review";
   if (pathname.startsWith("/app/landlord")) return "Landlord rental";
