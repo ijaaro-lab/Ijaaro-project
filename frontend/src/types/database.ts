@@ -429,6 +429,11 @@ export type Database = {
         Returns: boolean;
       };
       can_manage_landlord_ops: { Args: { p_tenant_id: string }; Returns: boolean };
+      /** Active landlord_admin or landlord_staff — property CRUD (not delete) / photo upload. */
+      can_manage_landlord_properties: {
+        Args: { p_tenant_id: string };
+        Returns: boolean;
+      };
       can_approve_rent: { Args: { p_tenant_id: string }; Returns: boolean };
       provision_tenant: {
         Args: {
@@ -525,6 +530,26 @@ export type Database = {
           p_status?: MembershipStatus;
         };
         Returns: TenantMembership;
+      };
+      /** Landlord-admin-only email lookup for staff/renter linking (not SA lookup). */
+      lookup_profile_by_email_for_landlord_admin: {
+        Args: { p_email: string; p_tenant_id: string };
+        Returns: Array<{
+          id: string;
+          full_name: string;
+          email: string | null;
+        }>;
+      };
+      /** Landlord admin: landlord_staff profiles (active/disabled) for staff management. */
+      list_landlord_staff_profiles: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          email: string | null;
+          role: AppRole;
+          membership_status: MembershipStatus;
+        }[];
       };
       list_company_member_profiles: {
         Args: { p_tenant_id: string };

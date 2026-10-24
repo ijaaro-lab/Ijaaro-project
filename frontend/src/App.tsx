@@ -24,13 +24,14 @@ import { AdminUtilityOpsPage } from "@/pages/admin/AdminUtilityOpsPage";
 import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage";
 import { AdminReportsPage } from "@/pages/admin/AdminReportsPage";
 import { AuditPage } from "@/pages/admin/AuditPage";
-import { LandlordDashboard } from "@/pages/landlord/LandlordDashboard";
+import { LandlordHome } from "@/pages/landlord/LandlordHome";
 import { PropertiesPage } from "@/pages/landlord/PropertiesPage";
 import { PropertyFormPage } from "@/pages/landlord/PropertyFormPage";
 import { PropertyDetailPage } from "@/pages/landlord/PropertyDetailPage";
 import { TenanciesPage } from "@/pages/landlord/TenanciesPage";
 import { TenancyDetailPage } from "@/pages/landlord/TenancyDetailPage";
 import { PaymentsReviewPage } from "@/pages/landlord/PaymentsReviewPage";
+import { StaffMembersPage } from "@/pages/landlord/StaffMembersPage";
 import { RenterDashboard } from "@/pages/renter/RenterDashboard";
 import { BrowseListingsPage } from "@/pages/renter/BrowseListingsPage";
 import { ListingDetailPage } from "@/pages/renter/ListingDetailPage";
@@ -102,11 +103,23 @@ export default function App() {
                   />
                 }
               >
-                <Route path="landlord" element={<LandlordDashboard />} />
+                <Route path="landlord" element={<LandlordHome />} />
                 <Route path="landlord/properties" element={<PropertiesPage />} />
                 <Route path="landlord/properties/new" element={<PropertyFormPage />} />
                 <Route path="landlord/properties/:id" element={<PropertyDetailPage />} />
                 <Route path="landlord/properties/:id/edit" element={<PropertyFormPage />} />
+              </Route>
+
+              <Route
+                element={
+                  <RoleRoute
+                    allow={["landlord_admin"]}
+                    tenantTypes={["landlord"]}
+                    message="This landlord admin tool requires an active landlord admin membership."
+                  />
+                }
+              >
+                <Route path="landlord/staff" element={<StaffMembersPage />} />
                 <Route path="landlord/tenancies" element={<TenanciesPage />} />
                 <Route path="landlord/tenancies/:id" element={<TenancyDetailPage />} />
                 <Route path="landlord/payments" element={<PaymentsReviewPage />} />
