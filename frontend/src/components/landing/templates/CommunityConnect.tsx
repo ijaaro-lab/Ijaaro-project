@@ -21,6 +21,7 @@ export function CommunityConnect(props: TenantLandingProps) {
     brandMark,
     onPortalLogin,
     preview,
+    belowContent,
   } = props;
 
   return (
@@ -115,6 +116,8 @@ export function CommunityConnect(props: TenantLandingProps) {
           website={websiteUrl}
         />
       </section>
+
+      {belowContent}
 
       <SiteFooter
         displayName={displayName}

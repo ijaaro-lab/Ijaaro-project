@@ -7,7 +7,6 @@ import {
 } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/components/layout/AppShell";
 import { TenantSlugSync } from "@/components/TenantSlugSync";
-import { AppLoading } from "@/components/ui/app-loading";
 import { workspaceAppHomePath } from "@/lib/roles";
 import { resolveTenantKeyFromLocation } from "@/lib/tenant";
 import { LandingPage } from "@/pages/LandingPage";
@@ -31,7 +30,12 @@ import { PropertyDetailPage } from "@/pages/landlord/PropertyDetailPage";
 import { TenanciesPage } from "@/pages/landlord/TenanciesPage";
 import { TenancyDetailPage } from "@/pages/landlord/TenancyDetailPage";
 import { PaymentsReviewPage } from "@/pages/landlord/PaymentsReviewPage";
+import { InviteRenterPage } from "@/pages/landlord/InviteRenterPage";
+import { ApplicationsPage } from "@/pages/landlord/ApplicationsPage";
 import { StaffMembersPage } from "@/pages/landlord/StaffMembersPage";
+import { ApplyToRentPage } from "@/pages/ApplyToRentPage";
+import { MyApplicationsPage } from "@/pages/MyApplicationsPage";
+import { PublicListingDetailPage } from "@/pages/PublicListingDetailPage";
 import { RenterDashboard } from "@/pages/renter/RenterDashboard";
 import { BrowseListingsPage } from "@/pages/renter/BrowseListingsPage";
 import { ListingDetailPage } from "@/pages/renter/ListingDetailPage";
@@ -47,11 +51,8 @@ import { PaymentsReviewPage as UtilityPaymentsReviewPage } from "@/pages/utility
 import { ReportsPage } from "@/pages/utility/ReportsPage";
 import { CustomerBillsPage } from "@/pages/utility/CustomerBillsPage";
 import { CustomerPaymentsPage } from "@/pages/utility/CustomerPaymentsPage";
-import { ConnectionsPage } from "@/pages/utility/ConnectionsPage";
-import { StaffPage } from "@/pages/utility/StaffPage";
-import { NotificationsPage } from "@/pages/utility/NotificationsPage";
-import { CompanySettingsPage } from "@/pages/utility/CompanySettingsPage";
 import { AccountPage } from "@/pages/AccountPage";
+import { SetPasswordPage } from "@/pages/SetPasswordPage";
 import { WorkspaceBrandingPage } from "@/pages/WorkspaceBrandingPage";
 
 function HomeEntry() {
@@ -59,7 +60,11 @@ function HomeEntry() {
   const tenantSlug = resolveTenantKeyFromLocation();
 
   if (loading) {
-    return <AppLoading />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading…
+      </div>
+    );
   }
 
   // Workspace portal: `/?tenant=<slug>` or `slug.localhost` / `slug.<base>`.
@@ -87,7 +92,11 @@ export default function App() {
           <Route path="/" element={<HomeEntry />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/set-password" element={<SetPasswordPage />} />
           <Route path="/create-workspace" element={<CreateWorkspacePage />} />
+          <Route path="/listings/:id" element={<PublicListingDetailPage />} />
+          <Route path="/apply" element={<ApplyToRentPage />} />
+          <Route path="/my-applications" element={<MyApplicationsPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/app" element={<AppShell />}>
@@ -123,14 +132,16 @@ export default function App() {
                 <Route path="landlord/tenancies" element={<TenanciesPage />} />
                 <Route path="landlord/tenancies/:id" element={<TenancyDetailPage />} />
                 <Route path="landlord/payments" element={<PaymentsReviewPage />} />
+                <Route path="landlord/renters" element={<InviteRenterPage />} />
+                <Route path="landlord/applications" element={<ApplicationsPage />} />
               </Route>
 
               <Route
                 element={
                   <RoleRoute
-                    allow={["renter", "landlord_admin", "landlord_staff"]}
+                    allow={["renter", "landlord_admin"]}
                     tenantTypes={["landlord"]}
-                    message="Renter tools require an active renter or landlord membership."
+                    message="Renter tools require an active renter or landlord admin membership."
                   />
                 }
               >
@@ -157,15 +168,11 @@ export default function App() {
                 <Route path="water" element={<UtilityDashboard kind="water" />} />
                 <Route path="water/customers" element={<CustomersPage kind="water" />} />
                 <Route path="water/customers/:id" element={<CustomerDetailPage kind="water" />} />
-                <Route path="water/connections" element={<ConnectionsPage kind="water" />} />
                 <Route path="water/meters" element={<MetersPage kind="water" />} />
                 <Route path="water/readings" element={<ReadingsPage kind="water" />} />
                 <Route path="water/bills" element={<BillsPage kind="water" />} />
                 <Route path="water/payments" element={<UtilityPaymentsReviewPage kind="water" />} />
-                <Route path="water/staff" element={<StaffPage kind="water" />} />
                 <Route path="water/reports" element={<ReportsPage kind="water" />} />
-                <Route path="water/notifications" element={<NotificationsPage kind="water" />} />
-                <Route path="water/settings" element={<CompanySettingsPage kind="water" />} />
                 <Route path="water/my-bills" element={<CustomerBillsPage kind="water" />} />
                 <Route path="water/my-payments" element={<CustomerPaymentsPage kind="water" />} />
               </Route>
@@ -186,15 +193,11 @@ export default function App() {
                 <Route path="electricity" element={<UtilityDashboard kind="electricity" />} />
                 <Route path="electricity/customers" element={<CustomersPage kind="electricity" />} />
                 <Route path="electricity/customers/:id" element={<CustomerDetailPage kind="electricity" />} />
-                <Route path="electricity/connections" element={<ConnectionsPage kind="electricity" />} />
                 <Route path="electricity/meters" element={<MetersPage kind="electricity" />} />
                 <Route path="electricity/readings" element={<ReadingsPage kind="electricity" />} />
                 <Route path="electricity/bills" element={<BillsPage kind="electricity" />} />
                 <Route path="electricity/payments" element={<UtilityPaymentsReviewPage kind="electricity" />} />
-                <Route path="electricity/staff" element={<StaffPage kind="electricity" />} />
                 <Route path="electricity/reports" element={<ReportsPage kind="electricity" />} />
-                <Route path="electricity/notifications" element={<NotificationsPage kind="electricity" />} />
-                <Route path="electricity/settings" element={<CompanySettingsPage kind="electricity" />} />
                 <Route path="electricity/my-bills" element={<CustomerBillsPage kind="electricity" />} />
                 <Route path="electricity/my-payments" element={<CustomerPaymentsPage kind="electricity" />} />
               </Route>

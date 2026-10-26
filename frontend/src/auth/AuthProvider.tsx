@@ -4,14 +4,25 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import {
+  confirmClientSession,
+  shouldApplyInitialSession,
+} from "@/auth/authSessionCoherence";
+import { resolveSignupEmailRedirectTo } from "@/lib/signupEmailRedirect";
 import { supabase } from "@/lib/supabase";
 import type { AppRole, Profile, Tenant, TenantMembership } from "@/types/database";
 
 export type MembershipWithTenant = TenantMembership & { tenant: Tenant };
+
+export type SignUpOptions = {
+  /** Same-origin `/apply?tenant=&property=` only; invalid values fall back to `/login`. */
+  emailRedirectTo?: string;
+};
 
 type AuthState = {
   session: Session | null;
@@ -22,13 +33,18 @@ type AuthState = {
   isSuperAdmin: boolean;
   activeMembership: MembershipWithTenant | null;
   setActiveMembershipId: (id: string | null) => void;
-  refreshMemberships: () => Promise<void>;
+  /** Optional userId skips a storage getSession() (avoids auth-callback races). */
+  refreshMemberships: (userId?: string) => Promise<MembershipWithTenant[]>;
   refreshProfile: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; session: Session | null }>;
   signUp: (
     email: string,
     password: string,
     fullName: string,
+    options?: SignUpOptions,
   ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   primaryRole: AppRole | null;
@@ -42,6 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<MembershipWithTenant[]>([]);
   const [activeMembershipId, setActiveMembershipId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Increments on every authoritative session commit (auth event / sign-in). */
+  const authEpochRef = useRef(0);
+  const membershipsRef = useRef<MembershipWithTenant[]>([]);
+  membershipsRef.current = memberships;
+
+  const commitSession = useCallback((next: Session | null) => {
+    authEpochRef.current += 1;
+    setSession(next);
+    if (!next?.user) {
+      setProfile(null);
+      setMemberships([]);
+      setActiveMembershipId(null);
+    }
+  }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -52,32 +82,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data);
   }, []);
 
-  const refreshMemberships = useCallback(async () => {
-    const {
-      data: { session: current },
-    } = await supabase.auth.getSession();
-    const userId = current?.user?.id;
-    if (!userId) {
-      setMemberships([]);
-      return;
-    }
+  const refreshMemberships = useCallback(
+    async (userId?: string): Promise<MembershipWithTenant[]> => {
+      let uid = userId?.trim() || "";
+      if (!uid) {
+        const {
+          data: { session: current },
+        } = await supabase.auth.getSession();
+        uid = current?.user?.id ?? "";
+      }
+      if (!uid) {
+        // Transient missing storage session must not wipe memberships already loaded
+        // for a still-valid React session (RP-1.3.31). Real sign-out clears via commitSession.
+        return membershipsRef.current;
+      }
 
-    // RLS lets company admins/staff read other members' rows (for Staff UI).
-    // Always constrain the session switcher to the signed-in user only.
-    const { data } = await supabase
-      .from("tenant_memberships")
-      .select("*, tenant:tenants(*)")
-      .eq("status", "active")
-      .eq("user_id", userId);
+      // RLS lets landlord/utility admins SELECT peer memberships on their tenant
+      // (needed for ops UIs). The workspace switcher must only list *this* user's rows.
+      const { data } = await supabase
+        .from("tenant_memberships")
+        .select("*, tenant:tenants(*)")
+        .eq("status", "active")
+        .eq("user_id", uid);
 
-    const rows = ((data ?? []) as Array<TenantMembership & { tenant: Tenant | Tenant[] | null }>).map(
-      (row) => {
+      const rows = (
+        (data ?? []) as Array<TenantMembership & { tenant: Tenant | Tenant[] | null }>
+      ).map((row) => {
         const tenant = Array.isArray(row.tenant) ? row.tenant[0] : row.tenant;
         return { ...row, tenant } as MembershipWithTenant;
-      },
-    );
-    setMemberships(rows.filter((r) => r.tenant));
-  }, []);
+      });
+      const mine = rows.filter((r) => r.tenant);
+      setMemberships(mine);
+      return mine;
+    },
+    [],
+  );
 
   const refreshProfile = useCallback(async () => {
     const {
@@ -88,27 +127,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const epochAtStart = authEpochRef.current;
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
-      setSession(data.session);
+      // Stale null/session from mount must not overwrite a newer SIGNED_IN / signIn.
+      if (!shouldApplyInitialSession(epochAtStart, authEpochRef.current)) {
+        setLoading(false);
+        return;
+      }
+      commitSession(data.session);
       if (data.session?.user) {
         await Promise.all([
           loadProfile(data.session.user.id),
-          refreshMemberships(),
+          refreshMemberships(data.session.user.id),
         ]);
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
-      setSession(next);
+    // Keep this callback synchronous. Awaiting Supabase auth/DB calls here can
+    // deadlock the auth client and make a later getSession() return null
+    // (see supabase/auth-js#762). Defer profile/membership loads.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      commitSession(next);
       if (next?.user) {
-        await Promise.all([loadProfile(next.user.id), refreshMemberships()]);
-      } else {
-        setProfile(null);
-        setMemberships([]);
-        setActiveMembershipId(null);
+        const userId = next.user.id;
+        window.setTimeout(() => {
+          if (!mounted) return;
+          void Promise.all([loadProfile(userId), refreshMemberships(userId)]);
+        }, 0);
       }
       setLoading(false);
     });
@@ -117,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile, refreshMemberships]);
+  }, [commitSession, loadProfile, refreshMemberships]);
 
   const isSuperAdmin = useMemo(
     () =>
@@ -140,17 +188,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const primaryRole = activeMembership?.role ?? (isSuperAdmin ? "super_admin" : null);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      return { error: error.message ?? null, session: null };
+    }
+    if (!data.session?.user) {
+      return { error: null, session: null };
+    }
+
+    // Authoritative React commit (bumps epoch so a late mount getSession cannot clear it).
+    commitSession(data.session);
+
+    // Do not navigate until the client can read the same user from getSession (JWT installed).
+    const confirmed = await confirmClientSession(
+      () => supabase.auth.getSession(),
+      data.session.user.id,
+    );
+    if (!confirmed?.user) {
+      // Keep React session; do not signOut on a transient client read miss.
+      return { error: null, session: data.session };
+    }
+    return {
+      error: null,
+      session: confirmed as Session,
+    };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    options?: SignUpOptions,
+  ) => {
+    const emailRedirectTo = resolveSignupEmailRedirectTo(
+      window.location.origin,
+      options?.emailRedirectTo,
+    );
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo,
       },
     });
     if (error) return { error: error.message, needsConfirmation: false };

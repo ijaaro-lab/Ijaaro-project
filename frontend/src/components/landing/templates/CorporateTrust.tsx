@@ -26,6 +26,7 @@ export function CorporateTrust(props: TenantLandingProps) {
     brandMark,
     onPortalLogin,
     preview,
+    belowContent,
   } = props;
 
   return (
@@ -121,6 +122,8 @@ export function CorporateTrust(props: TenantLandingProps) {
           website={websiteUrl}
         />
       </section>
+
+      {belowContent}
 
       <SiteFooter displayName={displayName} footerText={footerText} accent={accent} />
     </div>

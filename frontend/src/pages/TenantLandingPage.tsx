@@ -1,28 +1,30 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Building2, Droplets, LayoutDashboard, X, Zap } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import {
   friendlyAuthError,
   LandingLoginCard,
 } from "@/components/landing/LandingLoginCard";
+import { LandlordPublicListings } from "@/components/landing/LandlordPublicListings";
 import { TenantLandingTemplate } from "@/components/landing/templates";
-import { AppLoading } from "@/components/ui/app-loading";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/theme/ThemeProvider";
+import { resolveTenantPortalDashboardDestination } from "@/lib/myApplicationsNav";
 import {
   isPlatformSuperAdmin,
   tenantPortalAccessDenial,
-  workspaceAppHomePath,
 } from "@/lib/roles";
 import {
   brandingString,
   resolveLandingTemplateId,
 } from "@/lib/landingTemplates";
 import { supabase } from "@/lib/supabase";
+import { scrollToHashTarget } from "@/lib/scrollToHashTarget";
 import { platformHomeUrl, resolveTenantKeyFromLocation } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
-import type { Tenant, TenantMembership, TenantStatus, TenantType } from "@/types/database";
+import type { Session } from "@supabase/supabase-js";
+import type { TenantStatus, TenantType } from "@/types/database";
 
 type WorkspaceInfo = {
   id: string;
@@ -70,6 +72,7 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
     error: null,
     submitting: false,
   });
+  const [enteringDashboard, setEnteringDashboard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +121,13 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
     if (window.location.hash === "#portal") setPortalOpen(true);
   }, []);
 
+  // Native hash scroll runs before async workspace chrome mounts `#available-homes`.
+  // Re-apply the hash target once the public landing is ready.
+  useEffect(() => {
+    if (loading || authLoading || !workspace) return;
+    return scrollToHashTarget();
+  }, [loading, authLoading, workspace]);
+
   useEffect(() => {
     if (!portalOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -138,26 +148,76 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
         ) ?? null
       : null;
 
-  const loadMembershipsNow = async () => {
-    const { data } = await supabase
-      .from("tenant_memberships")
-      .select("*, tenant:tenants(*)")
-      .eq("status", "active");
-
-    return (
-      (data ?? []) as Array<TenantMembership & { tenant: Tenant | Tenant[] | null }>
-    )
-      .map((row) => {
-        const tenant = Array.isArray(row.tenant) ? row.tenant[0] : row.tenant;
-        return { ...row, tenant } as TenantMembership & { tenant: Tenant };
-      })
-      .filter((r) => r.tenant);
-  };
-
   const stayOnLandingAfterSignOut = async () => {
     await signOut();
     setLogin({ email: "", password: "", error: null, submitting: false });
     setPortalOpen(true);
+  };
+
+  /**
+   * Fresh memberships + confirmed workspace home; never invents a path.
+   * Prefer a known session (sign-in response / React) over a storage getSession()
+   * that can race with auth-state callbacks and briefly return null.
+   */
+  const resolveFreshPortalDestination = async (
+    knownSession?: Session | null,
+  ) => {
+    let current = knownSession ?? session ?? null;
+    if (!current?.user) {
+      const {
+        data: { session: fromStorage },
+      } = await supabase.auth.getSession();
+      current = fromStorage;
+    }
+    if (!current?.user) {
+      return { kind: "no_session" as const };
+    }
+
+    const rows = await refreshMemberships(current.user.id);
+    if (
+      isPlatformSuperAdmin(rows) ||
+      tenantPortalAccessDenial(rows, key, workspace?.name)
+    ) {
+      return { kind: "denied" as const };
+    }
+
+    const dest = resolveTenantPortalDashboardDestination(rows, key);
+    if (!dest) {
+      return { kind: "no_membership" as const };
+    }
+    return { kind: "ok" as const, dest };
+  };
+
+  const enterDashboard = async () => {
+    if (!key || !session || enteringDashboard) return;
+    setEnteringDashboard(true);
+    setLogin((s) => ({ ...s, error: null }));
+    try {
+      const result = await resolveFreshPortalDestination();
+      if (result.kind === "ok") {
+        setActiveMembershipId(result.dest.membershipId);
+        setPortalOpen(false);
+        navigate(result.dest.path, { replace: true });
+        return;
+      }
+      // Keep a valid session: do not sign out when memberships are still empty/mismatched.
+      setPortalOpen(true);
+      setLogin((s) => ({
+        ...s,
+        error:
+          result.kind === "no_session"
+            ? "Your session expired. Please sign in again."
+            : "Could not open the dashboard for this workspace yet. Try again in a moment, or sign out and sign back in.",
+      }));
+    } catch {
+      setPortalOpen(true);
+      setLogin((s) => ({
+        ...s,
+        error: "Could not open the dashboard. Please try again.",
+      }));
+    } finally {
+      setEnteringDashboard(false);
+    }
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -177,38 +237,43 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
         return;
       }
 
-      const rows = await loadMembershipsNow();
-      await refreshMemberships();
+      const resolved = await resolveFreshPortalDestination(result.session);
+      if (resolved.kind === "ok") {
+        // Gate navigation on client JWT readiness so ProtectedRoute + PostgREST
+        // do not race a React-only session (RP-1.3.31 / 42501 as anon).
+        const {
+          data: { session: clientSession },
+        } = await supabase.auth.getSession();
+        if (!clientSession?.user) {
+          setPortalOpen(true);
+          setLogin((s) => ({
+            ...s,
+            submitting: false,
+            error:
+              "Could not confirm your session yet. Please try again in a moment.",
+          }));
+          return;
+        }
+        setActiveMembershipId(resolved.dest.membershipId);
+        setLogin((s) => ({ ...s, submitting: false, error: null }));
+        setPortalOpen(false);
+        navigate(resolved.dest.path, { replace: true });
+        return;
+      }
 
-      // Platform Super Admin is never allowed on tenant portal login.
-      if (
-        isPlatformSuperAdmin(rows) ||
-        tenantPortalAccessDenial(rows, key, workspace?.name)
-      ) {
-        await signOut();
+      // Transient missing session after Auth success must not wipe the session.
+      if (resolved.kind === "no_session") {
         setPortalOpen(true);
         setLogin((s) => ({
           ...s,
           submitting: false,
-          error: "This account is not registered.",
+          error:
+            "Could not confirm your session yet. Please try again in a moment.",
         }));
         return;
       }
 
-      const match = rows.find(
-        (m) =>
-          m.status === "active" &&
-          m.role !== "super_admin" &&
-          (m.tenant.slug === key || m.tenant.subdomain === key),
-      );
-      if (match) {
-        setActiveMembershipId(match.id);
-        setLogin((s) => ({ ...s, submitting: false, error: null }));
-        setPortalOpen(false);
-        navigate(workspaceAppHomePath(match));
-        return;
-      }
-
+      // Confirmed session but no usable membership on this tenant.
       await signOut();
       setPortalOpen(true);
       setLogin((s) => ({
@@ -227,7 +292,11 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
   };
 
   if (loading || authLoading) {
-    return <AppLoading message="Loading workspace…" />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading workspace…
+      </div>
+    );
   }
 
   if (notFound || !workspace) {
@@ -366,18 +435,28 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
           >
             You are signed in as a member of this workspace.
           </p>
+          {login.error ? (
+            <p
+              role="alert"
+              className={cn(
+                "mt-3 rounded-lg border px-3 py-2 text-[13px]",
+                darkTone
+                  ? "border-red-400/30 bg-red-500/10 text-red-100"
+                  : "border-red-200 bg-red-50 text-red-700",
+              )}
+            >
+              {login.error}
+            </p>
+          ) : null}
           <Button
             className="mt-5 h-11 w-full gap-2 rounded-xl text-sm font-bold text-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.45)] transition hover:brightness-[1.05]"
             type="button"
             style={{ backgroundColor: accent }}
-            onClick={() => {
-              setActiveMembershipId(memberMatch.id);
-              setPortalOpen(false);
-              navigate(workspaceAppHomePath(memberMatch));
-            }}
+            disabled={enteringDashboard || options?.closeDisabled}
+            onClick={() => void enterDashboard()}
           >
             <LayoutDashboard className="h-4 w-4" />
-            Enter dashboard
+            {enteringDashboard ? "Opening…" : "Enter dashboard"}
           </Button>
           <button
             type="button"
@@ -387,6 +466,7 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
                 ? "text-white/45 hover:text-white/70"
                 : "text-muted-foreground hover:text-foreground",
             )}
+            disabled={enteringDashboard}
             onClick={() => void stayOnLandingAfterSignOut()}
           >
             Sign out
@@ -473,6 +553,40 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
           setLogin((s) => ({ ...s, error: null }));
           setPortalOpen(true);
         }}
+        belowContent={
+          workspace.tenant_type === "landlord" ? (
+            <>
+              <LandlordPublicListings tenantKey={key} accent={accent} />
+              <div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
+                <div
+                  className="rounded-2xl border border-border bg-card px-5 py-6 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6 sm:px-6 sm:py-7"
+                  data-testid="application-status-cta"
+                >
+                  <div className="min-w-0 max-w-xl">
+                    <h2 className="font-display text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                      Track Your Rental Application
+                    </h2>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                      View your application status and any updates from the property manager.
+                    </p>
+                  </div>
+                  <Link
+                    to={`/my-applications?tenant=${encodeURIComponent(key)}`}
+                    className="mt-4 inline-flex shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:mt-0"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 w-full px-5 text-sm font-semibold sm:w-auto"
+                    >
+                      View Application Status
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : undefined
+        }
       />
 
       {portalOpen && (

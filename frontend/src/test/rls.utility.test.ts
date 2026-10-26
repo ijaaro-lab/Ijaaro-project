@@ -1,29 +1,27 @@
 /**
  * Phase 3–4 utility RLS / billing / payment security tests (Prompt 03).
  *
- * Requires:
- *   VITE_SUPABASE_URL
- *   VITE_SUPABASE_ANON_KEY
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Runs ONLY against an isolated local Supabase (127.0.0.1 / localhost).
+ * Prefer IJAARO_ISOLATED_* via frontend/.env.isolated (see isolatedEnv.ts).
  *
  * Run: npm test -- src/test/rls.utility.test.ts
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
-import { config as loadEnv } from "dotenv";
-import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  isolatedAnon,
+  isolatedConfigured,
+  isolatedService,
+  isolatedUrl,
+} from "./isolatedEnv";
 
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
-loadEnv({ path: resolve(process.cwd(), "../.env.local") });
+const url = isolatedUrl;
+const anon = isolatedAnon;
+const service = isolatedService;
 
-const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
-const anon = process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const configured = Boolean(url && anon && service);
-const describeUtility = configured ? describe : describe.skip;
+const describeUtility = isolatedConfigured ? describe : describe.skip;
 
 async function asUser(email: string, password: string) {
   const client = createClient(url!, anon!, {
@@ -62,7 +60,6 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
 
     await make("waA", "Water Admin A");
     await make("waB", "Water Admin B");
-    await make("wsA", "Water Staff A");
     await make("elA", "Elec Admin A");
     await make("elB", "Elec Admin B");
     await make("custA", "Customer A");
@@ -99,14 +96,6 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
 
     await insertTenant("waterA", "water_company", "waA", "utility_admin");
     await insertTenant("waterB", "water_company", "waB", "utility_admin");
-
-    const { error: staffMemErr } = await admin.from("tenant_memberships").insert({
-      tenant_id: ids.tenant_waterA,
-      user_id: ids.wsA,
-      role: "utility_staff",
-      status: "active",
-    });
-    if (staffMemErr) throw staffMemErr;
     await insertTenant("elecA", "electricity_company", "elA", "utility_admin");
     await insertTenant("elecB", "electricity_company", "elB", "utility_admin");
     await insertTenant("landlordA", "landlord", "llA", "landlord_admin");
@@ -751,63 +740,4 @@ describeUtility("Phase 3–4 utility RLS, billing & payments", () => {
     expect(data.account.account_number).toBe(`LINK-${suffix}`);
     expect(data.meter.meter_number).toBe(`MLINK-${suffix}`);
   });
-
-  it(
-    "19. utility_staff can register pending payment and approve (records balance)",
-    async () => {
-      const wa = await asUser(emails.waA, password);
-      const { data: reg, error: regErr } = await wa.rpc("register_utility_house", {
-        p_company_tenant_id: ids.tenant_waterA,
-        p_address_line: `Staff Pay St ${suffix}`,
-        p_account_number: `STAFFPAY-${suffix}`,
-        p_monthly_amount: 40,
-        p_customer_email: emails.custA,
-        p_property_type: "house",
-      });
-      expect(regErr).toBeNull();
-
-      const { data: bill, error: billErr } = await wa.rpc("generate_flat_utility_bill", {
-        p_utility_account_id: reg.account.id,
-        p_period_start: "2026-10-01",
-        p_period_end: "2026-10-31",
-        p_due_date: null,
-      });
-      expect(billErr).toBeNull();
-      ids.staffPayBill = bill.id;
-
-      const staff = await asUser(emails.wsA, password);
-      const { data: registered, error: regPayErr } = await staff.rpc(
-        "register_utility_payment_by_ops",
-        {
-          p_utility_bill_id: ids.staffPayBill,
-          p_amount: 20,
-          p_method: "mobile_money",
-          p_reference: `ops-${suffix}`,
-        },
-      );
-      expect(regPayErr).toBeNull();
-      expect(registered.status).toBe("pending");
-      expect(registered.payer_id).toBe(ids.custA);
-      ids.staffRegisteredPay = registered.id;
-
-      // Cross-tenant admin cannot register on another company's bill
-      const otherAdmin = await asUser(emails.waB, password);
-      const { error: crossErr } = await otherAdmin.rpc("register_utility_payment_by_ops", {
-        p_utility_bill_id: ids.staffPayBill,
-        p_amount: 5,
-        p_method: "cash",
-      });
-      expect(crossErr).toBeTruthy();
-
-      // Staff can approve — balance updates only after approve
-      const { data: reviewed, error: ok } = await staff.rpc("review_utility_payment", {
-        p_payment_id: ids.staffRegisteredPay,
-        p_decision: "approve",
-      });
-      expect(ok).toBeNull();
-      expect(reviewed.payment.status).toBe("paid");
-      expect(Number(reviewed.bill.amount_paid)).toBe(20);
-    },
-    30_000,
-  );
 });

@@ -121,10 +121,7 @@ export function workspaceAppHomePath(membership: WorkspaceNavMembership): string
   const type = membership.tenant.tenant_type;
   const role = membership.role;
 
-  if (type === "water_company") {
-    // Admin, staff, and customer all land on Overview.
-    return `/app/water${q}`;
-  }
+  if (type === "water_company") return `/app/water${q}`;
   if (type === "electricity_company") return `/app/electricity${q}`;
   if (type === "landlord") {
     if (role === "renter") return `/app/renter${q}`;

@@ -25,6 +25,7 @@ export function ModernProfessional(props: TenantLandingProps) {
     brandMark,
     onPortalLogin,
     preview,
+    belowContent,
   } = props;
 
   return (
@@ -141,6 +142,8 @@ export function ModernProfessional(props: TenantLandingProps) {
           </p>
         ) : null}
       </section>
+
+      {belowContent}
 
       <SiteFooter displayName={displayName} footerText={footerText} accent={accent} />
     </div>

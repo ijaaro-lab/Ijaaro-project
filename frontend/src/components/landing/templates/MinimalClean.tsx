@@ -19,6 +19,7 @@ export function MinimalClean(props: TenantLandingProps) {
     brandMark,
     onPortalLogin,
     preview,
+    belowContent,
   } = props;
 
   return (
@@ -100,6 +101,8 @@ export function MinimalClean(props: TenantLandingProps) {
           />
         </div>
       </section>
+
+      {belowContent}
 
       <SiteFooter
         displayName={displayName}

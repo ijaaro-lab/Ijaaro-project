@@ -10,31 +10,31 @@ export function servicesForTenantType(tenantType: TenantType): ServiceItem[] {
     return [
       {
         title: "Customer accounts",
-        body: "Create and manage customer accounts for your water company.",
+        body: "Manage water service accounts linked to your customers.",
       },
       {
-        title: "Finance & payments",
-        body: "Record payments, track balances, and approve pending submissions.",
+        title: "Meter readings",
+        body: "Capture and review meter readings for accurate billing.",
       },
       {
-        title: "Reports",
-        body: "View collections, outstanding balances, and payment outcomes for your company.",
+        title: "Water billing",
+        body: "Issue bills and track payment status for your company only.",
       },
     ];
   }
   if (tenantType === "electricity_company") {
     return [
       {
-        title: "Customer accounts",
-        body: "Create and manage customer accounts for your electricity company.",
+        title: "Electricity accounts",
+        body: "Operate customer accounts for electricity service.",
       },
       {
-        title: "Finance & payments",
-        body: "Record payments, track balances, and approve pending submissions.",
+        title: "Meter & consumption",
+        body: "Record readings and retain billing responsibility history.",
       },
       {
-        title: "Reports",
-        body: "View collections, outstanding balances, and payment outcomes for your company.",
+        title: "Payment review",
+        body: "Review submitted payments inside your isolated workspace.",
       },
     ];
   }
@@ -103,15 +103,7 @@ export function ServicesSection({
   const dark = tone === "dark";
 
   return (
-    <section className={cn("space-y-4", className)}>
-      <h2
-        className={cn(
-          "font-display text-lg font-semibold",
-          dark ? "text-white" : "text-foreground",
-        )}
-      >
-        Services
-      </h2>
+    <div className={cn("space-y-4", className)}>
       <ul className="grid gap-3 sm:grid-cols-3">
         {items.map((item) => (
           <li
@@ -143,7 +135,7 @@ export function ServicesSection({
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
 
@@ -179,15 +171,7 @@ export function ContactSection({
   const dark = tone === "dark";
 
   return (
-    <section className={cn("space-y-3", className)}>
-      <h2
-        className={cn(
-          "font-display text-lg font-semibold",
-          dark ? "text-white" : "text-foreground",
-        )}
-      >
-        Contact
-      </h2>
+    <div className={cn("space-y-3", className)}>
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.label} className="flex items-start gap-2 text-sm">
@@ -201,7 +185,7 @@ export function ContactSection({
               <a
                 href={item.href}
                 className={cn(
-                  "hover:underline",
+                  "rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   dark ? "text-white/85" : "text-foreground",
                 )}
                 rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
@@ -217,7 +201,7 @@ export function ContactSection({
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
 

@@ -143,6 +143,25 @@ export function resolveTenantKeyFromLocation(
   return readTenantSlugFromSearch(search) ?? readTenantSlugFromHost(hostname);
 }
 
+/**
+ * Portal tenant key for tenant-scoped renter browse/detail RPCs.
+ * Prefer active membership slug/subdomain (TenantSlugSync), then URL/host.
+ * Returns null when unresolved — callers must fail closed (no marketplace fallback).
+ */
+export function resolvePortalTenantKey(options?: {
+  membershipSlug?: string | null;
+  membershipSubdomain?: string | null;
+  search?: string;
+  hostname?: string;
+}): string | null {
+  const fromMembership =
+    options?.membershipSlug?.trim().toLowerCase() ||
+    options?.membershipSubdomain?.trim().toLowerCase() ||
+    "";
+  if (fromMembership) return fromMembership;
+  return resolveTenantKeyFromLocation(options?.search, options?.hostname);
+}
+
 export function tenantTypeLabel(type: string): string {
   switch (type) {
     case "landlord":

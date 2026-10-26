@@ -67,8 +67,17 @@ ALTER TABLE public.audit_logs FORCE ROW LEVEL SECURITY;
 -- =============================================================================
 -- 3) Revoke unintended helper / platform RPC EXECUTE
 -- =============================================================================
-REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.service_type_for_tenant(uuid) FROM PUBLIC, anon;
+-- rls_auto_enable may exist only on hosted projects (advisor helper); skip if absent
+-- so local disposable resets remain applicable.
+DO $$
+BEGIN
+  IF to_regprocedure('public.rls_auto_enable()') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated';
+  END IF;
+  IF to_regprocedure('public.service_type_for_tenant(uuid)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.service_type_for_tenant(uuid) FROM PUBLIC, anon';
+  END IF;
+END $$;
 REVOKE ALL ON FUNCTION public.tenant_is_operable(uuid) FROM PUBLIC, anon;
 -- Keep authenticated EXECUTE on tenant_is_operable / service helpers used by app,
 -- but they remain membership-sensitive at call sites; revoke anon only above.

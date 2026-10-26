@@ -1,30 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Banknote,
+  Building2,
   CircleDollarSign,
   Clock3,
   CreditCard,
-  Download,
+  Droplets,
   Landmark,
+  Zap,
 } from "lucide-react";
-import { BarChart, DonutChart } from "@/components/charts/SimpleCharts";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import { money } from "@/lib/format";
-import { downloadTablePdf } from "@/lib/simplePdf";
+import { money, statusTone } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { tenantTypeLabel } from "@/lib/tenant";
 import type {
   PaymentStatus,
   RentPayment,
+  TenantType,
   UtilityPayment,
 } from "@/types/database";
 import {
+  AdminEmpty,
   AdminError,
   AdminKpi,
   AdminKpiRow,
   AdminPageHeader,
+  AdminSectionTitle,
+  AdminTableCard,
   TENANT_EMBED,
+  adminTableHeadClass,
   filterSelectClassName,
+  statusBadgeTone,
   type TenantRef,
   type WorkspaceTenant,
 } from "./shared";
@@ -38,28 +46,22 @@ type PaymentRow = {
   amount: number;
   currency: string;
   method: string;
+  reference: string | null;
   status: PaymentStatus;
   submitted_at: string;
   tenants: TenantRef | null;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  paid: "#1fa85a",
-  pending: "#f59e0b",
-  processing: "#2b8cff",
-  rejected: "#ef4444",
-  failed: "#dc2626",
-  cancelled: "#94a3b8",
-  refunded: "#8b5cf6",
-};
+const OPS_TYPES: TenantType[] = [
+  "landlord",
+  "water_company",
+  "electricity_company",
+];
 
-function monthKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(key: string) {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleString(undefined, { month: "short" });
+function typeIcon(type: string) {
+  if (type === "water_company") return Droplets;
+  if (type === "electricity_company") return Zap;
+  return Building2;
 }
 
 export function AdminPaymentsPage() {
@@ -77,18 +79,18 @@ export function AdminPaymentsPage() {
       supabase
         .from("tenants")
         .select("id, name, slug, subdomain, tenant_type, status, created_at")
-        .in("tenant_type", ["landlord", "water_company", "electricity_company"])
+        .in("tenant_type", OPS_TYPES)
         .order("created_at", { ascending: false }),
       supabase
         .from("rent_payments")
         .select(`*, ${TENANT_EMBED}`)
         .order("submitted_at", { ascending: false })
-        .limit(300),
+        .limit(150),
       supabase
         .from("utility_payments")
         .select(`*, ${TENANT_EMBED}`)
         .order("submitted_at", { ascending: false })
-        .limit(300),
+        .limit(150),
     ]);
 
     const err = tenantsRes.error || rent.error || utility.error;
@@ -105,6 +107,7 @@ export function AdminPaymentsPage() {
       amount: Number(p.amount),
       currency: p.currency,
       method: p.method,
+      reference: p.reference,
       status: p.status,
       submitted_at: p.submitted_at,
       tenants: p.tenants,
@@ -120,6 +123,7 @@ export function AdminPaymentsPage() {
       amount: Number(p.amount),
       currency: p.currency,
       method: p.method,
+      reference: p.reference,
       status: p.status,
       submitted_at: p.submitted_at,
       tenants: p.tenants,
@@ -137,6 +141,19 @@ export function AdminPaymentsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const paymentsByTenant = useMemo(() => {
+    const map: Record<string, { count: number; pending: number; volume: number }> =
+      {};
+    for (const p of rows) {
+      const cur = map[p.tenant_id] ?? { count: 0, pending: 0, volume: 0 };
+      cur.count += 1;
+      if (p.status === "pending") cur.pending += 1;
+      if (p.status === "paid") cur.volume += p.amount;
+      map[p.tenant_id] = cur;
+    }
+    return map;
+  }, [rows]);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -159,116 +176,12 @@ export function AdminPaymentsPage() {
     };
   }, [filtered, workspaces.length]);
 
-  const volumeBars = useMemo(() => {
-    const now = new Date();
-    const keys: string[] = [];
-    for (let i = 5; i >= 0; i -= 1) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      keys.push(monthKey(d));
-    }
-    const map: Record<string, number> = Object.fromEntries(keys.map((k) => [k, 0]));
-    for (const p of filtered) {
-      if (p.status !== "paid") continue;
-      const k = monthKey(new Date(p.submitted_at));
-      if (k in map) map[k] += p.amount;
-    }
-    return keys.map((k) => ({
-      key: k,
-      label: monthLabel(k),
-      value: Math.round(map[k] * 100) / 100,
-    }));
-  }, [filtered]);
-
-  const statusSlices = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of filtered) {
-      counts[p.status] = (counts[p.status] ?? 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([key, value]) => ({
-        key,
-        label: key.charAt(0).toUpperCase() + key.slice(1),
-        value,
-        color: STATUS_COLORS[key] ?? "#64748b",
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [filtered]);
-
-  const sourceBreakdown = useMemo(() => {
-    const rent = filtered.filter((r) => r.source === "rent");
-    const utility = filtered.filter((r) => r.source === "utility");
-    const rentPaid = rent
-      .filter((r) => r.status === "paid")
-      .reduce((s, r) => s + r.amount, 0);
-    const utilPaid = utility
-      .filter((r) => r.status === "paid")
-      .reduce((s, r) => s + r.amount, 0);
-    return {
-      rentCount: rent.length,
-      utilityCount: utility.length,
-      rentPaid,
-      utilPaid,
-    };
-  }, [filtered]);
-
-  const downloadPdf = () => {
-    const generated = new Date().toLocaleString();
-    const statusRows = statusSlices.map((s) => [
-      s.label,
-      String(s.value),
-      stats.total > 0 ? `${Math.round((s.value / stats.total) * 100)}%` : "0%",
-    ]);
-    const monthRows = volumeBars.map((b) => [b.label, money(b.value)]);
-
-    downloadTablePdf({
-      fileName: `ijaaro-payments-report-${new Date().toISOString().slice(0, 10)}`,
-      title: "IJAARO Payments Report",
-      subtitle: "Platform payment summary",
-      meta: [
-        `Generated: ${generated}`,
-        `Filter: ${source === "all" ? "All sources" : source} · ${statusFilter === "all" ? "All statuses" : statusFilter}`,
-        `Collecting workspaces: ${stats.workspaces}`,
-        `Total payments: ${stats.total} · Pending: ${stats.pending} · Paid: ${stats.paid}`,
-        `Paid volume: ${money(stats.volume)}`,
-        `Rent paid: ${money(sourceBreakdown.rentPaid)} (${sourceBreakdown.rentCount} submissions)`,
-        `Utility paid: ${money(sourceBreakdown.utilPaid)} (${sourceBreakdown.utilityCount} submissions)`,
-      ],
-      tables: [
-        {
-          title: "Status distribution",
-          headers: ["Status", "Count", "Share"],
-          rows: statusRows.length > 0 ? statusRows : [["—", "0", "0%"]],
-          colWeights: [2, 1, 1],
-        },
-        {
-          title: "Paid volume by month",
-          headers: ["Month", "Paid volume"],
-          rows: monthRows,
-          colWeights: [1, 2],
-        },
-        {
-          title: "Source mix",
-          headers: ["Source", "Submissions", "Paid volume"],
-          rows: [
-            ["Rent", String(sourceBreakdown.rentCount), money(sourceBreakdown.rentPaid)],
-            [
-              "Utility",
-              String(sourceBreakdown.utilityCount),
-              money(sourceBreakdown.utilPaid),
-            ],
-          ],
-          colWeights: [2, 1, 2],
-        },
-      ],
-    });
-  };
-
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Platform · Payments"
         title="Payments"
-        description="Platform payment overview — volume and status at a glance."
+        description="Workspaces that collect rent or utility payments, plus every submission."
         actions={
           <>
             <Select
@@ -294,16 +207,6 @@ export function AdminPaymentsPage() {
               <option value="rejected">Rejected</option>
               <option value="failed">Failed</option>
             </Select>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={loading}
-              onClick={downloadPdf}
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
           </>
         }
       />
@@ -338,59 +241,154 @@ export function AdminPaymentsPage() {
 
       {error && <AdminError message={error} />}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none sm:p-8">
-          <h3 className="font-display text-lg font-semibold text-foreground sm:text-xl">
-            Paid volume
-          </h3>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Last 6 months · confirmed paid amounts
-          </p>
-          {loading ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">
-              Loading…
-            </p>
-          ) : (
-            <BarChart
-              points={volumeBars}
-              height={280}
-              color="var(--color-brand-water)"
-              highlightColor="#1fa85a"
-              formatValue={(n) => money(n)}
-              emptyLabel="No paid volume yet"
-            />
-          )}
-        </section>
+      <AdminTableCard
+        footer={
+          !loading ? `${workspaces.length} landlord & utility workspace(s)` : undefined
+        }
+      >
+        <AdminSectionTitle
+          title="Payment workspaces"
+          description="Landlord and utility companies that can receive payments"
+        />
+        <table className="w-full text-left text-sm">
+          <thead className={adminTableHeadClass()}>
+            <tr>
+              <th className="px-4 py-3 font-medium">Workspace</th>
+              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Payments</th>
+              <th className="px-4 py-3 font-medium">Pending</th>
+              <th className="px-4 py-3 font-medium">Paid volume</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6}>
+                  <AdminEmpty>Loading…</AdminEmpty>
+                </td>
+              </tr>
+            ) : workspaces.length === 0 ? (
+              <tr>
+                <td colSpan={6}>
+                  <AdminEmpty>
+                    No landlord or utility workspaces yet. Create them under Tenants.
+                  </AdminEmpty>
+                </td>
+              </tr>
+            ) : (
+              workspaces.map((t) => {
+                const Icon = typeIcon(t.tenant_type);
+                const pay = paymentsByTenant[t.id] ?? {
+                  count: 0,
+                  pending: 0,
+                  volume: 0,
+                };
+                return (
+                  <tr
+                    key={t.id}
+                    className="border-t border-border/70 transition-colors hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        to={`/app/admin/tenants/${t.id}`}
+                        className="font-medium text-foreground hover:text-brand-blue hover:underline"
+                      >
+                        {t.name}
+                      </Link>
+                      <div className="text-xs text-muted-foreground">{t.slug}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <Icon className="h-3.5 w-3.5" />
+                        {tenantTypeLabel(t.tenant_type as TenantType)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone={statusBadgeTone(t.status)}>{t.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums font-medium">
+                      {pay.count}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                      {pay.pending}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {money(pay.volume)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </AdminTableCard>
 
-        <section className="rounded-2xl border border-border/80 bg-card p-6 shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none sm:p-8">
-          <h3 className="font-display text-lg font-semibold text-foreground sm:text-xl">
-            Status mix
-          </h3>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Share of payment submissions by status
-          </p>
-          {loading ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">
-              Loading…
-            </p>
-          ) : statusSlices.length === 0 ? (
-            <p className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
-              No payments yet
-            </p>
-          ) : (
-            <div className="flex min-h-[280px] items-center justify-center">
-              <DonutChart
-                slices={statusSlices}
-                size={240}
-                thickness={32}
-                centerValue={stats.total}
-                centerLabel="payments"
-                showCounts
-              />
-            </div>
-          )}
-        </section>
-      </div>
+      <AdminTableCard footer={!loading ? `${filtered.length} payments` : undefined}>
+        <AdminSectionTitle
+          title="Payment submissions"
+          description="Rent and utility payment records across workspaces"
+        />
+        <table className="w-full text-left text-sm">
+          <thead className={adminTableHeadClass()}>
+            <tr>
+              <th className="px-4 py-3 font-medium">When</th>
+              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium">Workspace</th>
+              <th className="px-4 py-3 font-medium">Amount</th>
+              <th className="px-4 py-3 font-medium">Method</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6}>
+                  <AdminEmpty>Loading…</AdminEmpty>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6}>
+                  <AdminEmpty>
+                    {workspaces.length > 0
+                      ? "Workspaces exist, but no payment submissions yet."
+                      : "No payments yet."}
+                  </AdminEmpty>
+                </td>
+              </tr>
+            ) : (
+              filtered.map((p) => (
+                <tr
+                  key={`${p.source}-${p.id}`}
+                  className="border-t border-border/70 transition-colors hover:bg-muted/30"
+                >
+                  <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(p.submitted_at).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td className="px-4 py-3 capitalize">{p.source}</td>
+                  <td className="px-4 py-3">{p.tenants?.name ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums">
+                    {money(p.amount, p.currency)}
+                  </td>
+                  <td className="px-4 py-3 capitalize text-muted-foreground">
+                    {p.method}
+                    {p.reference ? ` · ${p.reference}` : ""}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </AdminTableCard>
     </div>
   );
 }

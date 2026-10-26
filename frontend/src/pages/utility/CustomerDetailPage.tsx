@@ -3,14 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
-import { money, paymentStatusLabel, statusTone } from "@/lib/format";
+import { money, statusTone } from "@/lib/format";
 import type { Meter, MeterReading, UtilityAccount, UtilityBill, UtilityPayment } from "@/types/database";
-import {
-  isSimplifiedFinance,
-  KIND_LABEL,
-  KIND_TENANT_TYPE,
-  type UtilityKind,
-} from "./shared";
+import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
 
 export function CustomerDetailPage({ kind }: { kind: UtilityKind }) {
   const { id } = useParams();
@@ -19,10 +14,6 @@ export function CustomerDetailPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isStaff = activeMembership?.role === "utility_admin" || activeMembership?.role === "utility_staff";
   const label = KIND_LABEL[kind];
-  const simplifiedWater = isSimplifiedFinance(kind);
-  const tenantSearch = activeMembership?.tenant.slug
-    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
-    : "";
 
   const [account, setAccount] = useState<UtilityAccount | null>(null);
   const [meters, setMeters] = useState<Meter[]>([]);
@@ -100,162 +91,137 @@ export function CustomerDetailPage({ kind }: { kind: UtilityKind }) {
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          to={`/app/${kind}/customers${tenantSearch}`}
-          className="text-sm text-brand-blue hover:underline"
-        >
+        <Link to={`/app/${kind}/customers`} className="text-sm text-brand-blue hover:underline">
           ← Customers
         </Link>
         <h2 className="mt-2 font-display text-2xl font-bold">{account.account_number}</h2>
         <div className="mt-2 flex flex-wrap gap-2">
           <Badge tone={statusTone(account.status)}>{account.status}</Badge>
-          {!simplifiedWater && (
-            <span className="text-sm text-muted-foreground">
-              {Number(account.unit_price).toFixed(4)} / unit
-              {account.extra_charges_config?.fixed_amount
-                ? ` · extra ${money(account.extra_charges_config.fixed_amount)}`
-                : ""}
-            </span>
-          )}
-          {simplifiedWater && account.extra_charges_config?.fixed_amount != null && (
-            <span className="text-sm text-muted-foreground">
-              Monthly fee {money(Number(account.extra_charges_config.fixed_amount))}
-            </span>
-          )}
+          <span className="text-sm text-muted-foreground">
+            {Number(account.unit_price).toFixed(4)} / unit
+            {account.extra_charges_config?.fixed_amount
+              ? ` · extra ${money(account.extra_charges_config.fixed_amount)}`
+              : ""}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-4 rounded-xl border border-border bg-card p-5 text-sm sm:grid-cols-3">
+        <div>
+          <div className="text-xs text-muted-foreground">Customer user ID</div>
+          <div className="font-mono text-xs">{account.customer_id}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Property</div>
+          <div className="font-mono text-xs">{account.property_id}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Effective</div>
+          <div>
+            {account.effective_from || "—"}
+            {account.effective_to ? ` → ${account.effective_to}` : ""}
+          </div>
         </div>
       </div>
 
       <section className="rounded-xl border border-border bg-card p-5">
-        <h3 className="font-semibold">Payment history</h3>
+        <h3 className="font-semibold">Meters</h3>
+        {meters.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No meters linked yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border">
+            {meters.map((m) => (
+              <li key={m.id} className="flex items-center justify-between py-3 text-sm">
+                <div>
+                  <div className="font-medium">{m.meter_number}</div>
+                  <div className="text-muted-foreground">Installed {m.installed_at || "—"}</div>
+                </div>
+                <Badge tone={statusTone(m.status)}>{m.status}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h3 className="font-semibold">Recent readings</h3>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-3">Date</th>
+                <th className="py-2 pr-3">Previous</th>
+                <th className="py-2 pr-3">Current</th>
+                <th className="py-2 pr-3">Units</th>
+                <th className="py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {readings.map((r) => (
+                <tr key={r.id}>
+                  <td className="py-2 pr-3">{r.reading_date}</td>
+                  <td className="py-2 pr-3">{r.previous_reading_value ?? "—"}</td>
+                  <td className="py-2 pr-3">{r.reading_value}</td>
+                  <td className="py-2 pr-3">{r.units_consumed ?? "—"}</td>
+                  <td className="py-2">
+                    <Badge tone={statusTone(r.status)}>{r.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {readings.length === 0 && <p className="text-sm text-muted-foreground">No readings yet.</p>}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h3 className="font-semibold">Bills</h3>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="py-2 pr-3">Period</th>
+                <th className="py-2 pr-3">Units</th>
+                <th className="py-2 pr-3">Total</th>
+                <th className="py-2 pr-3">Balance</th>
+                <th className="py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {bills.map((b) => (
+                <tr key={b.id}>
+                  <td className="py-2 pr-3">
+                    {b.period_start} → {b.period_end}
+                  </td>
+                  <td className="py-2 pr-3">{b.units_consumed}</td>
+                  <td className="py-2 pr-3">{money(b.total_amount)}</td>
+                  <td className="py-2 pr-3">{money(b.balance)}</td>
+                  <td className="py-2">
+                    <Badge tone={statusTone(b.status)}>{b.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {bills.length === 0 && <p className="text-sm text-muted-foreground">No bills yet.</p>}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-5">
+        <h3 className="font-semibold">Payments</h3>
         <ul className="mt-3 divide-y divide-border">
           {payments.map((p) => (
             <li key={p.id} className="flex items-center justify-between py-3 text-sm">
               <div>
                 <div className="font-medium">{money(p.amount, p.currency)}</div>
-                <div className="text-muted-foreground">
-                  {new Date(p.submitted_at).toLocaleString()}
-                  {p.rejection_reason ? ` · ${p.rejection_reason}` : ""}
-                </div>
+                <div className="text-muted-foreground">{new Date(p.submitted_at).toLocaleString()}</div>
               </div>
-              <Badge tone={statusTone(p.status)}>
-                {simplifiedWater ? paymentStatusLabel(p.status) : p.status}
-              </Badge>
+              <Badge tone={statusTone(p.status)}>{p.status}</Badge>
             </li>
           ))}
-          {payments.length === 0 && (
-            <li className="py-6 text-sm text-muted-foreground">No payments yet.</li>
-          )}
+          {payments.length === 0 && <li className="py-6 text-sm text-muted-foreground">No payments yet.</li>}
         </ul>
       </section>
-
-      {!simplifiedWater && (
-        <>
-          <div className="grid gap-4 rounded-xl border border-border bg-card p-5 text-sm sm:grid-cols-3">
-            <div>
-              <div className="text-xs text-muted-foreground">Customer user ID</div>
-              <div className="font-mono text-xs">{account.customer_id}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Property</div>
-              <div className="font-mono text-xs">{account.property_id}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Effective</div>
-              <div>
-                {account.effective_from || "—"}
-                {account.effective_to ? ` → ${account.effective_to}` : ""}
-              </div>
-            </div>
-          </div>
-
-          <section className="rounded-xl border border-border bg-card p-5">
-            <h3 className="font-semibold">Meters</h3>
-            {meters.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">No meters linked yet.</p>
-            ) : (
-              <ul className="mt-3 divide-y divide-border">
-                {meters.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between py-3 text-sm">
-                    <div>
-                      <div className="font-medium">{m.meter_number}</div>
-                      <div className="text-muted-foreground">Installed {m.installed_at || "—"}</div>
-                    </div>
-                    <Badge tone={statusTone(m.status)}>{m.status}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="rounded-xl border border-border bg-card p-5">
-            <h3 className="font-semibold">Recent readings</h3>
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Previous</th>
-                    <th className="py-2 pr-3">Current</th>
-                    <th className="py-2 pr-3">Units</th>
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {readings.map((r) => (
-                    <tr key={r.id}>
-                      <td className="py-2 pr-3">{r.reading_date}</td>
-                      <td className="py-2 pr-3">{r.previous_reading_value ?? "—"}</td>
-                      <td className="py-2 pr-3">{r.reading_value}</td>
-                      <td className="py-2 pr-3">{r.units_consumed ?? "—"}</td>
-                      <td className="py-2">
-                        <Badge tone={statusTone(r.status)}>{r.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {readings.length === 0 && (
-                <p className="text-sm text-muted-foreground">No readings yet.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-border bg-card p-5">
-            <h3 className="font-semibold">Bills</h3>
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="py-2 pr-3">Period</th>
-                    <th className="py-2 pr-3">Units</th>
-                    <th className="py-2 pr-3">Total</th>
-                    <th className="py-2 pr-3">Balance</th>
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {bills.map((b) => (
-                    <tr key={b.id}>
-                      <td className="py-2 pr-3">
-                        {b.period_start} → {b.period_end}
-                      </td>
-                      <td className="py-2 pr-3">{b.units_consumed}</td>
-                      <td className="py-2 pr-3">{money(b.total_amount)}</td>
-                      <td className="py-2 pr-3">{money(b.balance)}</td>
-                      <td className="py-2">
-                        <Badge tone={statusTone(b.status)}>{b.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {bills.length === 0 && (
-                <p className="text-sm text-muted-foreground">No bills yet.</p>
-              )}
-            </div>
-          </section>
-        </>
-      )}
     </div>
   );
 }

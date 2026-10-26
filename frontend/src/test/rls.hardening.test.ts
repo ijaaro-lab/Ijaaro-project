@@ -1,29 +1,27 @@
 /**
  * Security audit regression tests (grants, property search, premises, branding).
  *
- * Requires:
- *   VITE_SUPABASE_URL
- *   VITE_SUPABASE_ANON_KEY
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Runs ONLY against an isolated local Supabase (127.0.0.1 / localhost).
+ * Prefer IJAARO_ISOLATED_* via frontend/.env.isolated (see isolatedEnv.ts).
  *
  * Run: npm test -- src/test/rls.hardening.test.ts
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
-import { config as loadEnv } from "dotenv";
-import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  isolatedAnon,
+  isolatedConfigured,
+  isolatedService,
+  isolatedUrl,
+} from "./isolatedEnv";
 
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
-loadEnv({ path: resolve(process.cwd(), "../.env.local") });
+const url = isolatedUrl;
+const anon = isolatedAnon;
+const service = isolatedService;
 
-const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
-const anon = process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const configured = Boolean(url && anon && service);
-const describeHardening = configured ? describe : describe.skip;
+const describeHardening = isolatedConfigured ? describe : describe.skip;
 
 describeHardening("Security audit hardening regressions", () => {
   const password = "TestPass123!_harden";
@@ -286,10 +284,10 @@ describeHardening("Security audit hardening regressions", () => {
   });
 });
 
-if (!configured) {
-  describe("Security audit hardening (env missing)", () => {
-    it("not run: set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY", () => {
-      expect(configured).toBe(false);
+if (!isolatedConfigured) {
+  describe.skip("Security audit hardening (skipped — not an isolated local Supabase target)", () => {
+    it("requires frontend/.env.isolated with loopback IJAARO_ISOLATED_* keys", () => {
+      expect(isolatedConfigured).toBe(false);
     });
   });
 }

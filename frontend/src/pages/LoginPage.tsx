@@ -45,6 +45,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [workspace, setWorkspace] = useState<WorkspacePreview | null>(null);
+  const notice = (location.state as { notice?: string } | null)?.notice ?? null;
 
   useEffect(() => {
     if (!tenantSlug) {
@@ -286,6 +287,15 @@ export function LoginPage() {
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
               Configure Supabase environment variables before signing in.
             </div>
+          )}
+
+          {notice && (
+            <p
+              role="status"
+              className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+            >
+              {notice}
+            </p>
           )}
 
           <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>

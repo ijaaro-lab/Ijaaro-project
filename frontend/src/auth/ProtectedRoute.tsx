@@ -1,18 +1,43 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "@/auth/AuthProvider";
-import { AppLoading } from "@/components/ui/app-loading";
+import { useAuth, type MembershipWithTenant } from "@/auth/AuthProvider";
 import type { AppRole } from "@/types/database";
 import {
   readTenantSlugFromHost,
   tenantWorkspacePath,
 } from "@/lib/tenant";
 
+/**
+ * Authorize tenant RoleRoutes against the *active* membership only.
+ * Another tenant's membership must not unlock a route after workspace switch.
+ * Super Admin is handled separately (platform console redirect).
+ */
+export function activeMembershipAllowsRoute(
+  activeMembership: MembershipWithTenant | null | undefined,
+  allow: AppRole[],
+  tenantTypes?: string[],
+): boolean {
+  const m = activeMembership;
+  if (!m) return false;
+  if (m.status !== "active") return false;
+  if (m.role === "super_admin") return false;
+  if (!allow.includes(m.role)) return false;
+  if (m.tenant?.tenant_type === "platform") return false;
+  if (tenantTypes && !tenantTypes.includes(m.tenant?.tenant_type ?? "")) {
+    return false;
+  }
+  return true;
+}
+
 export function ProtectedRoute() {
   const { session, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return <AppLoading message="Loading session…" />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading session…
+      </div>
+    );
   }
 
   if (!session) {
@@ -53,7 +78,11 @@ export function SuperAdminRoute() {
   const { isSuperAdmin, loading } = useAuth();
 
   if (loading) {
-    return <AppLoading message="Checking authorization…" fullScreen={false} />;
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
+        Checking authorization…
+      </div>
+    );
   }
 
   if (!isSuperAdmin) {
@@ -75,10 +104,14 @@ export function RoleRoute({
   tenantTypes?: string[];
   message: string;
 }) {
-  const { loading, memberships, isSuperAdmin } = useAuth();
+  const { loading, activeMembership, isSuperAdmin } = useAuth();
 
   if (loading) {
-    return <AppLoading message="Checking authorization…" fullScreen={false} />;
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
+        Checking authorization…
+      </div>
+    );
   }
 
   // Platform Super Admin uses /app/admin only — never tenant role areas.
@@ -86,15 +119,7 @@ export function RoleRoute({
     return <Navigate to="/app/admin" replace />;
   }
 
-  const ok = memberships.some(
-    (m) =>
-      m.status === "active" &&
-      m.role !== "super_admin" &&
-      allow.includes(m.role) &&
-      m.tenant?.tenant_type !== "platform" &&
-      (!tenantTypes ||
-        tenantTypes.includes(m.tenant?.tenant_type ?? "")),
-  );
+  const ok = activeMembershipAllowsRoute(activeMembership, allow, tenantTypes);
 
   if (!ok) {
     return <UnauthorizedNotice message={message} />;

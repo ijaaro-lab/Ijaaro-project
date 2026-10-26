@@ -26,4 +26,9 @@ export type TenantLandingProps = {
   onPortalLogin?: () => void;
   /** When true, render compact preview chrome (gallery). */
   preview?: boolean;
+  /**
+   * Optional content rendered after Contact and before the site footer
+   * (e.g. landlord public listings). Keeps the footer as the last chrome section.
+   */
+  belowContent?: ReactNode;
 };

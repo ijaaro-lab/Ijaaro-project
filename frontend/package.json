@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "env:live": "node ./scripts/ensure-live-env.mjs",
+    "dev": "npm run env:live && vite --mode live --port 5173 --strictPort",
+    "dev:isolated": "node ./scripts/run-isolated-dev.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -15,7 +17,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
     "dotenv": "^18.0.7",
-    "jspdf": "^4.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"

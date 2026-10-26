@@ -25,6 +25,7 @@ export function ServiceShowcase(props: TenantLandingProps) {
     brandMark,
     onPortalLogin,
     preview,
+    belowContent,
   } = props;
 
   return (
@@ -139,6 +140,8 @@ export function ServiceShowcase(props: TenantLandingProps) {
           </div>
         </div>
       </section>
+
+      {belowContent}
 
       <SiteFooter displayName={displayName} footerText={footerText} accent={accent} />
     </div>

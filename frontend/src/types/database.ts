@@ -18,7 +18,7 @@ export type AppRole =
   | "utility_customer";
 
 export type PropertyStatus = "available" | "occupied" | "vacant";
-export type PropertyType = "apartment" | "house" | "shop" | "office" | "other";
+export type PropertyType = "apartment" | "house" | "villa" | "shop" | "office" | "other";
 export type AssignmentStatus = "invited" | "active" | "completed" | "cancelled";
 export type ChargeStatus = "due" | "partial" | "paid" | "overdue" | "cancelled";
 export type PaymentStatus =
@@ -42,6 +42,11 @@ export type Profile = {
   full_name: string;
   phone: string | null;
   email: string | null;
+  /**
+   * Legacy optional field — do not use for uniqueness.
+   * Landlord-scoped usernames live in tenant_renter_usernames (RP-1.3.2).
+   */
+  username?: string | null;
   avatar_url: string | null;
   preferred_language: string;
   created_at: string;
@@ -93,6 +98,10 @@ export type Property = {
   address_line: string;
   district: string | null;
   city: string | null;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  kitchens: number | null;
+  bathrooms: number | null;
   property_type: PropertyType;
   description: string | null;
   rent_amount: number | null;
@@ -105,6 +114,89 @@ export type Property = {
   is_listed: boolean;
   created_at: string;
   updated_at: string;
+};
+
+/** Allowlisted marketplace card fields from list_marketplace_listings(). */
+export type MarketplaceListingSummary = {
+  id: string;
+  name: string | null;
+  district: string | null;
+  city: string | null;
+  property_type: PropertyType;
+  status: PropertyStatus;
+  rent_amount: number | null;
+  currency: string;
+};
+
+/** Allowlisted marketplace detail from get_marketplace_listing(). */
+export type MarketplaceListing = MarketplaceListingSummary & {
+  address_line: string;
+  description: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+};
+
+/** Landlord public website cards (list_landlord_public_listings). Same allowlist as marketplace cards. */
+export type LandlordPublicListingSummary = MarketplaceListingSummary;
+
+/**
+ * Landlord public website detail (get_landlord_public_listing).
+ * Extends marketplace detail with public-safe room counts and neighborhood.
+ */
+export type LandlordPublicListing = MarketplaceListing & {
+  neighborhood: string | null;
+  bedrooms: number | null;
+  kitchens: number | null;
+  bathrooms: number | null;
+};
+
+export type RentalApplicationStatus = "pending" | "accepted" | "rejected";
+
+export type RentalApplication = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  applicant_user_id: string;
+  requested_username: string;
+  message: string | null;
+  status: RentalApplicationStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MyRentalApplicationRow = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  requested_username: string;
+  message: string | null;
+  status: RentalApplicationStatus;
+  reviewed_at: string | null;
+  created_at: string;
+  property_name: string | null;
+  property_district: string | null;
+  property_city: string | null;
+};
+
+export type LandlordRentalApplicationRow = {
+  id: string;
+  tenant_id: string;
+  property_id: string;
+  applicant_user_id: string;
+  requested_username: string;
+  message: string | null;
+  status: RentalApplicationStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  property_name: string | null;
+  property_district: string | null;
+  property_city: string | null;
+  applicant_full_name: string | null;
+  applicant_email: string | null;
+  applicant_phone: string | null;
 };
 
 export type PropertyPhoto = {
@@ -248,7 +340,7 @@ export type UtilityBill = {
   tenant_id: string;
   utility_account_id: string;
   property_id: string;
-  meter_reading_id: string | null;
+  meter_reading_id: string;
   service_type: ServiceType;
   period_start: string;
   period_end: string;
@@ -356,7 +448,10 @@ export type Database = {
       rental_assignments: {
         Row: RentalAssignment;
         Insert: never;
-        Update: Partial<Pick<RentalAssignment, "notes" | "end_date">>;
+        /** Direct client updates: identity + status are immutable (use assign/move-out RPCs). */
+        Update: Partial<
+          Pick<RentalAssignment, "rent_amount" | "currency" | "due_day" | "notes" | "end_date">
+        >;
       };
       rent_charges: {
         Row: RentCharge;
@@ -485,6 +580,15 @@ export type Database = {
           phone: string | null;
         }>;
       };
+      /** Landlord-admin-only email lookup for staff/renter linking (not SA lookup). */
+      lookup_profile_by_email_for_landlord_admin: {
+        Args: { p_email: string; p_tenant_id: string };
+        Returns: Array<{
+          id: string;
+          full_name: string;
+          email: string | null;
+        }>;
+      };
       resolve_tenant_workspace: {
         Args: { p_key: string };
         Returns: {
@@ -503,25 +607,6 @@ export type Database = {
         Args: { p_tenant_id: string; p_status: TenantStatus };
         Returns: Tenant;
       };
-      update_tenant: {
-        Args: {
-          p_tenant_id: string;
-          p_name?: string | null;
-          p_slug?: string | null;
-          p_subdomain?: string | null;
-          p_status?: TenantStatus | null;
-        };
-        Returns: Tenant;
-      };
-      delete_tenant: {
-        Args: { p_tenant_id: string };
-        Returns: {
-          id: string;
-          name: string;
-          slug: string;
-          tenant_type: TenantType;
-        };
-      };
       manage_membership: {
         Args: {
           p_tenant_id: string;
@@ -530,39 +615,6 @@ export type Database = {
           p_status?: MembershipStatus;
         };
         Returns: TenantMembership;
-      };
-      /** Landlord-admin-only email lookup for staff/renter linking (not SA lookup). */
-      lookup_profile_by_email_for_landlord_admin: {
-        Args: { p_email: string; p_tenant_id: string };
-        Returns: Array<{
-          id: string;
-          full_name: string;
-          email: string | null;
-        }>;
-      };
-      /** Landlord admin: landlord_staff profiles (active/disabled) for staff management. */
-      list_landlord_staff_profiles: {
-        Args: { p_tenant_id: string };
-        Returns: {
-          user_id: string;
-          full_name: string | null;
-          email: string | null;
-          role: AppRole;
-          membership_status: MembershipStatus;
-        }[];
-      };
-      list_company_member_profiles: {
-        Args: { p_tenant_id: string };
-        Returns: Array<{
-          membership_id: string;
-          user_id: string;
-          full_name: string | null;
-          email: string | null;
-          phone: string | null;
-          role: AppRole;
-          membership_status: MembershipStatus;
-          created_at: string;
-        }>;
       };
       assign_renter: {
         Args: {
@@ -598,6 +650,22 @@ export type Database = {
         };
         Returns: RentCharge;
       };
+      /** service_role / postgres only — automatic monthly rent charge batch. */
+      generate_monthly_rent_charges: {
+        Args: {
+          p_as_of?: string;
+          p_max_months?: number;
+        };
+        Returns: {
+          as_of: string;
+          month_cap: string;
+          max_months: number;
+          assignments_scanned: number;
+          created: number;
+          skipped_duplicate: number;
+          skipped_ineligible: number;
+        };
+      };
       review_rent_payment: {
         Args: {
           p_payment_id: string;
@@ -605,6 +673,77 @@ export type Database = {
           p_rejection_reason?: string | null;
         };
         Returns: { payment: RentPayment; charge: RentCharge };
+      };
+      /** Landlord ops: active renter profiles on a landlord tenant (RP-1.3.6 migration mirror). */
+      list_same_tenant_member_profiles: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          email: string | null;
+          role: AppRole;
+          membership_status: MembershipStatus;
+        }[];
+      };
+      /** Landlord admin: landlord_staff profiles (active/disabled) for staff management. */
+      list_landlord_staff_profiles: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          email: string | null;
+          role: AppRole;
+          membership_status: MembershipStatus;
+        }[];
+      };
+      list_marketplace_listings: {
+        Args: Record<string, never>;
+        Returns: MarketplaceListingSummary[];
+      };
+      get_marketplace_listing: {
+        Args: { p_id: string };
+        Returns: MarketplaceListing[];
+      };
+      list_landlord_public_listings: {
+        Args: { p_tenant_key: string };
+        Returns: LandlordPublicListingSummary[];
+      };
+      get_landlord_public_listing: {
+        Args: { p_tenant_key: string; p_property_id: string };
+        Returns: LandlordPublicListing[];
+      };
+      submit_rental_application: {
+        Args: {
+          p_tenant_key: string;
+          p_property_id: string;
+          p_requested_username: string;
+          p_message?: string | null;
+        };
+        Returns: RentalApplication;
+      };
+      list_my_rental_applications: {
+        Args: { p_tenant_key?: string | null };
+        Returns: MyRentalApplicationRow[];
+      };
+      list_landlord_rental_applications: {
+        Args: { p_status?: RentalApplicationStatus | null };
+        Returns: LandlordRentalApplicationRow[];
+      };
+      review_rental_application: {
+        Args: { p_application_id: string; p_decision: string };
+        Returns: RentalApplication;
+      };
+      check_landlord_username_available: {
+        Args: { p_tenant_key: string; p_username: string };
+        Returns: boolean;
+      };
+      landlord_username_available: {
+        Args: {
+          p_tenant_id: string;
+          p_username: string;
+          p_exclude_user_id?: string | null;
+        };
+        Returns: boolean;
       };
       search_properties_for_link: {
         Args: {
@@ -663,84 +802,6 @@ export type Database = {
         };
         Returns: UtilityBill;
       };
-      register_utility_house: {
-        Args: {
-          p_company_tenant_id: string;
-          p_address_line: string;
-          p_account_number: string;
-          p_monthly_amount: number;
-          p_name?: string | null;
-          p_district?: string | null;
-          p_city?: string | null;
-          p_contact_phone?: string | null;
-          p_contact_email?: string | null;
-          p_customer_email?: string | null;
-          p_meter_number?: string | null;
-          p_property_type?: PropertyType;
-        };
-        Returns: {
-          house: Pick<
-            Property,
-            | "id"
-            | "name"
-            | "address_line"
-            | "district"
-            | "city"
-            | "contact_phone"
-            | "contact_email"
-            | "property_type"
-            | "status"
-          >;
-          account: UtilityAccount;
-          meter: Meter | null;
-          monthly_amount: number;
-        };
-      };
-      generate_flat_utility_bill: {
-        Args: {
-          p_utility_account_id: string;
-          p_period_start: string;
-          p_period_end: string;
-          p_due_date?: string | null;
-        };
-        Returns: UtilityBill;
-      };
-      issue_monthly_flat_bills_for_tenant: {
-        Args: {
-          p_tenant_id: string;
-          p_period_start?: string | null;
-          p_period_end?: string | null;
-        };
-        Returns: {
-          period_start: string;
-          period_end: string;
-          issued: number;
-          already_existed: number;
-          skipped: number;
-        };
-      };
-      issue_flat_bills_months_ahead: {
-        Args: {
-          p_utility_account_id: string;
-          p_months: number;
-          p_from_period_start?: string | null;
-        };
-        Returns: {
-          utility_account_id: string;
-          monthly_fee: number;
-          months: number;
-          issued: number;
-          already_existed: number;
-          periods: Array<{
-            period_start: string;
-            period_end: string;
-            bill_id: string;
-            amount: number;
-            balance: number;
-            new: boolean;
-          }>;
-        };
-      };
       review_utility_payment: {
         Args: {
           p_payment_id: string;
@@ -748,43 +809,6 @@ export type Database = {
           p_rejection_reason?: string | null;
         };
         Returns: { payment: UtilityPayment; bill: UtilityBill };
-      };
-      register_utility_payment_by_ops: {
-        Args: {
-          p_utility_bill_id: string;
-          p_amount: number;
-          p_method: PaymentMethod;
-          p_reference?: string | null;
-          p_proof_path?: string | null;
-          p_idempotency_key?: string | null;
-        };
-        Returns: UtilityPayment;
-      };
-      adjust_utility_bill_by_ops: {
-        Args: {
-          p_utility_bill_id: string;
-          p_total_amount?: number | null;
-          p_cancel?: boolean;
-        };
-        Returns: UtilityBill;
-      };
-      update_utility_customer_by_ops: {
-        Args: {
-          p_utility_account_id: string;
-          p_name?: string | null;
-          p_address_line?: string | null;
-          p_district?: string | null;
-          p_city?: string | null;
-          p_contact_phone?: string | null;
-          p_contact_email?: string | null;
-          p_account_number?: string | null;
-          p_monthly_amount?: number | null;
-        };
-        Returns: Record<string, unknown>;
-      };
-      deactivate_utility_account_by_admin: {
-        Args: { p_utility_account_id: string };
-        Returns: UtilityAccount;
       };
     };
   };

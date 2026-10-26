@@ -4,10 +4,11 @@ frontend/node_modules/
 .tools-img/node_modules/
 frontend/dist/
 
-# Environment and secrets
+# Environment and secrets (never commit real credentials)
 .env
 .env.*
 !.env.example
+!frontend/.env.example
 credentials.json
 frontend/.local/
 *.pem
@@ -15,9 +16,17 @@ frontend/.local/
 # Local Supabase CLI / tooling artifacts
 supabase/.temp/
 
-# Local smoke and Vitest outputs
+# Local smoke and Vitest outputs / caches
 frontend/.smoke-*.json
 frontend/.vitest/
+coverage/
+.nyc_output/
+
+# TypeScript / bundler build caches
+*.tsbuildinfo
+.turbo/
+.vite/
+frontend/.vite/
 
 # OS / editor
 .DS_Store
@@ -31,3 +40,5 @@ Thumbs.db
 .cache/
 dist/
 build/
+playwright-report/
+test-results/

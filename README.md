@@ -38,6 +38,19 @@ supabase/
 
 ## Local setup
 
+**Recommended (Supabase Live):** configure the frontend against the hosted project, then from `frontend/`:
+
+```bash
+npm install
+# Set Live VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY + VITE_ALLOW_REMOTE_SUPABASE=true in .env.local
+npm run env:live   # writes gitignored .env.live.local
+npm run dev        # http://127.0.0.1:5173 → Live Supabase
+```
+
+See `frontend/.env.example`. The former `npm run dev:local` / `env:local` local-Docker workflow has been removed.
+
+### Env templates
+
 1. Copy env templates (never commit real secrets):
 
 ```bash
@@ -45,9 +58,9 @@ cp .env.example .env.local
 cp frontend/.env.example frontend/.env.local
 ```
 
-2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (publishable/anon only in the frontend).
+2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (publishable/anon only in the frontend). For Live during `vite` serve, set `VITE_ALLOW_REMOTE_SUPABASE=true`.
 
-3. Install and run the web app:
+3. Install and run:
 
 ```bash
 cd frontend

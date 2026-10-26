@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Copy, ExternalLink, Trash2 } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { Copy, ExternalLink } from "lucide-react";
 import { LandingTemplatePicker } from "@/components/landing/LandingTemplatePicker";
 import { supabase } from "@/lib/supabase";
 import {
@@ -8,15 +8,8 @@ import {
   resolveLandingTemplateId,
   type LandingTemplateId,
 } from "@/lib/landingTemplates";
-import type {
-  AppRole,
-  Tenant,
-  TenantMembership,
-  TenantStatus,
-  TenantType,
-} from "@/types/database";
+import type { AppRole, Tenant, TenantMembership, TenantType } from "@/types/database";
 import {
-  slugifyTenantName,
   tenantSubdomainLabel,
   tenantTypeLabel,
   tenantWorkspaceUrl,
@@ -24,8 +17,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 
 const roleOptions: Record<string, AppRole[]> = {
   platform: ["super_admin"],
@@ -36,7 +27,6 @@ const roleOptions: Record<string, AppRole[]> = {
 
 export function TenantDetailPage() {
   const { tenantId } = useParams();
-  const navigate = useNavigate();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<TenantMembership[]>([]);
   const [adminEmail, setAdminEmail] = useState("");
@@ -49,14 +39,6 @@ export function TenantDetailPage() {
     "modern_professional",
   );
   const [savingBrand, setSavingBrand] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editSlug, setEditSlug] = useState("");
-  const [editSubdomain, setEditSubdomain] = useState("");
-  const [editStatus, setEditStatus] = useState<TenantStatus>("active");
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deletingBusy, setDeletingBusy] = useState(false);
 
   const load = async () => {
     if (!tenantId) return;
@@ -76,16 +58,13 @@ export function TenantDetailPage() {
     setTenant(t);
     setMemberships(m ?? []);
     if (t) {
-      const row = t as Tenant;
-      const opts = roleOptions[row.tenant_type] ?? [];
+      const opts = roleOptions[(t as Tenant).tenant_type] ?? [];
       if (opts[0]) setRole(opts[0]);
       setLandingTemplate(
-        resolveLandingTemplateId((row.branding ?? {}) as Record<string, unknown>),
+        resolveLandingTemplateId(
+          ((t as Tenant).branding ?? {}) as Record<string, unknown>,
+        ),
       );
-      setEditName(row.name);
-      setEditSlug(row.slug);
-      setEditSubdomain(row.subdomain || row.slug);
-      setEditStatus(row.status);
     }
   };
 
@@ -198,48 +177,6 @@ export function TenantDetailPage() {
     await load();
   };
 
-  const onSaveEdit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!tenantId || tenant.tenant_type === "platform") return;
-    setSavingEdit(true);
-    setError(null);
-    setMessage(null);
-    const { error: err } = await supabase.rpc("update_tenant", {
-      p_tenant_id: tenantId,
-      p_name: editName.trim(),
-      p_slug: slugifyTenantName(editSlug || editName),
-      p_subdomain: slugifyTenantName(editSubdomain || editSlug || editName),
-      p_status: editStatus,
-    });
-    setSavingEdit(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setMessage("Tenant details saved.");
-    await load();
-  };
-
-  const onConfirmDelete = async () => {
-    if (!tenantId || tenant.tenant_type === "platform") return;
-    if (deleteConfirm.trim() !== tenant.name) {
-      setError("Type the tenant name exactly to confirm delete.");
-      return;
-    }
-    setDeletingBusy(true);
-    setError(null);
-    setMessage(null);
-    const { error: err } = await supabase.rpc("delete_tenant", {
-      p_tenant_id: tenantId,
-    });
-    setDeletingBusy(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    navigate("/app/admin/tenants");
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -288,65 +225,6 @@ export function TenantDetailPage() {
           </div>
         </div>
       </div>
-
-      {tenant.tenant_type !== "platform" && (
-        <form
-          onSubmit={(e) => void onSaveEdit(e)}
-          className="space-y-4 rounded-xl border border-border bg-card p-5"
-        >
-          <div>
-            <h3 className="font-semibold">Edit tenant</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Update name, slug, subdomain, or status. Tenant type cannot be changed.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="detail-edit-name">Name</Label>
-              <Input
-                id="detail-edit-name"
-                required
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="detail-edit-slug">Slug</Label>
-              <Input
-                id="detail-edit-slug"
-                required
-                value={editSlug}
-                onChange={(e) => setEditSlug(e.target.value.toLowerCase())}
-              />
-            </div>
-            <div>
-              <Label htmlFor="detail-edit-subdomain">Subdomain</Label>
-              <Input
-                id="detail-edit-subdomain"
-                required
-                value={editSubdomain}
-                onChange={(e) => setEditSubdomain(e.target.value.toLowerCase())}
-              />
-            </div>
-            <div>
-              <Label htmlFor="detail-edit-status">Status</Label>
-              <Select
-                id="detail-edit-status"
-                value={editStatus}
-                onChange={(e) => setEditStatus(e.target.value as TenantStatus)}
-              >
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="suspended">Suspended</option>
-                <option value="disabled">Disabled</option>
-              </Select>
-            </div>
-          </div>
-          <Button type="submit" disabled={savingEdit}>
-            {savingEdit ? "Saving…" : "Save changes"}
-          </Button>
-        </form>
-      )}
 
       {tenant.tenant_type !== "platform" && (
         <section className="space-y-4 rounded-xl border border-border bg-card p-5">
@@ -462,68 +340,6 @@ export function TenantDetailPage() {
           </tbody>
         </table>
       </div>
-
-      {tenant.tenant_type !== "platform" && tenant.status === "suspended" && (
-        <section className="space-y-3 rounded-xl border border-red-200 bg-red-50/70 p-5 dark:border-red-500/30 dark:bg-red-500/10">
-          <div>
-            <h3 className="font-semibold text-red-800 dark:text-red-200">Danger zone</h3>
-            <p className="mt-1 text-sm text-red-700/90 dark:text-red-300/90">
-              This workspace is suspended. You can permanently delete it and all owned
-              properties, bills, payments, and memberships.
-            </p>
-          </div>
-          {!showDelete ? (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setShowDelete(true);
-                setDeleteConfirm("");
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete tenant
-            </Button>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="detail-delete-confirm">
-                  Type{" "}
-                  <span className="font-mono normal-case tracking-normal">{tenant.name}</span>{" "}
-                  to confirm
-                </Label>
-                <Input
-                  id="detail-delete-confirm"
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder={tenant.name}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={deletingBusy || deleteConfirm.trim() !== tenant.name}
-                  onClick={() => void onConfirmDelete()}
-                >
-                  {deletingBusy ? "Deleting…" : "Delete forever"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowDelete(false);
-                    setDeleteConfirm("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }

@@ -1,29 +1,27 @@
 /**
  * Phase 2 rental RLS / workflow security tests.
  *
- * Requires:
- *   VITE_SUPABASE_URL
- *   VITE_SUPABASE_ANON_KEY
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Runs ONLY against an isolated local Supabase (127.0.0.1 / localhost).
+ * Prefer IJAARO_ISOLATED_* via frontend/.env.isolated (see isolatedEnv.ts).
  *
  * Run: npm test -- src/test/rls.rental.test.ts
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
-import { config as loadEnv } from "dotenv";
-import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import {
+  isolatedAnon,
+  isolatedConfigured,
+  isolatedService,
+  isolatedUrl,
+} from "./isolatedEnv";
 
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
-loadEnv({ path: resolve(process.cwd(), "../.env.local") });
+const url = isolatedUrl;
+const anon = isolatedAnon;
+const service = isolatedService;
 
-const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL;
-const anon = process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const configured = Boolean(url && anon && service);
-const describeRental = configured ? describe : describe.skip;
+const describeRental = isolatedConfigured ? describe : describe.skip;
 
 async function asUser(email: string, password: string) {
   const client = createClient(url!, anon!, {
@@ -64,6 +62,7 @@ describeRental("Phase 2 rental RLS & workflows", () => {
     await make("llB", "Landlord B");
     await make("rA", "Renter A");
     await make("rB", "Renter B");
+    await make("rNew", "Renter New Invite");
 
     for (const [key, owner, role] of [
       ["landlordA", "llA", "landlord_admin"],
@@ -162,11 +161,127 @@ describeRental("Phase 2 rental RLS & workflows", () => {
     if (error) expect(error).toBeTruthy();
   });
 
-  it("renter can browse listed available properties", async () => {
-    const client = await asUser(emails.rA, password);
-    const { data, error } = await client.from("properties").select("id").eq("id", ids.propA);
+  it("landlord A can create and edit own-tenant property", async () => {
+    const client = await asUser(emails.llA, password);
+    const { data: created, error: createErr } = await client
+      .from("properties")
+      .insert({
+        tenant_id: ids.tenant_landlordA,
+        owner_id: ids.llA,
+        name: `A Create ${suffix}`,
+        address_line: "9 Create St",
+        rent_amount: 150,
+        currency: "USD",
+        status: "available",
+        is_listed: false,
+        created_source: "landlord",
+      })
+      .select("id,tenant_id,name")
+      .single();
+    expect(createErr).toBeNull();
+    expect(created?.tenant_id).toBe(ids.tenant_landlordA);
+    ids.propACreated = created!.id;
+
+    const { data: updated, error: updErr } = await client
+      .from("properties")
+      .update({ name: `A Edited ${suffix}` })
+      .eq("id", ids.propACreated)
+      .eq("tenant_id", ids.tenant_landlordA)
+      .select("id,name")
+      .maybeSingle();
+    expect(updErr).toBeNull();
+    expect(updated?.name).toBe(`A Edited ${suffix}`);
+  });
+
+  it("landlord A can upload and read own property photo object", async () => {
+    const client = await asUser(emails.llA, password);
+    const path = `${ids.tenant_landlordA}/${ids.propA}/${randomUUID()}.png`;
+    // Minimal valid 1x1 PNG
+    const bytes = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      ),
+      (c) => c.charCodeAt(0),
+    );
+    const { error: upErr } = await client.storage.from("property-photos").upload(path, bytes, {
+      contentType: "image/png",
+      upsert: false,
+    });
+    expect(upErr).toBeNull();
+
+    const { error: rowErr } = await client.from("property_photos").insert({
+      property_id: ids.propA,
+      tenant_id: ids.tenant_landlordA,
+      storage_path: path,
+      sort_order: 0,
+    });
+    expect(rowErr).toBeNull();
+
+    const { data: signed, error: signErr } = await client.storage
+      .from("property-photos")
+      .createSignedUrl(path, 60);
+    expect(signErr).toBeNull();
+    expect(signed?.signedUrl).toBeTruthy();
+    ids.photoPathA = path;
+  });
+
+  it("landlord B cannot upload photo under landlord A property path", async () => {
+    const client = await asUser(emails.llB, password);
+    const path = `${ids.tenant_landlordA}/${ids.propA}/${randomUUID()}.png`;
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const { error } = await client.storage.from("property-photos").upload(path, bytes, {
+      contentType: "image/png",
+      upsert: false,
+    });
+    expect(error).toBeTruthy();
+  });
+
+  it("list_same_tenant_member_profiles returns only active renters for landlord ops", async () => {
+    const landlord = await asUser(emails.llA, password);
+    const { data, error } = await landlord.rpc("list_same_tenant_member_profiles", {
+      p_tenant_id: ids.tenant_landlordA,
+    });
     expect(error).toBeNull();
-    expect(data?.some((r) => r.id === ids.propA)).toBe(true);
+    const userIds = (data ?? []).map((r: { user_id: string }) => r.user_id);
+    expect(userIds).toEqual(expect.arrayContaining([ids.rA, ids.rB]));
+    expect(userIds).not.toContain(ids.llA);
+    expect((data ?? []).every((r: { role: string }) => r.role === "renter")).toBe(true);
+  });
+
+  it("landlord B cannot list landlord A renters via list_same_tenant_member_profiles", async () => {
+    const landlordB = await asUser(emails.llB, password);
+    const { data, error } = await landlordB.rpc("list_same_tenant_member_profiles", {
+      p_tenant_id: ids.tenant_landlordA,
+    });
+    expect(error).toBeTruthy();
+    expect(data).toBeNull();
+  });
+
+  it("landlord admin can invite renter onto own tenant via manage_membership", async () => {
+    const landlord = await asUser(emails.llA, password);
+    const { data, error } = await landlord.rpc("manage_membership", {
+      p_tenant_id: ids.tenant_landlordA,
+      p_user_id: ids.rNew,
+      p_role: "renter",
+      p_status: "active",
+    });
+    expect(error).toBeNull();
+    const row = data as { user_id: string; role: string; tenant_id: string; status: string } | null;
+    expect(row?.tenant_id).toBe(ids.tenant_landlordA);
+    expect(row?.user_id).toBe(ids.rNew);
+    expect(row?.role).toBe("renter");
+    expect(row?.status).toBe("active");
+  });
+
+  it("landlord cannot invite renter onto another landlord tenant", async () => {
+    const landlordA = await asUser(emails.llA, password);
+    const { error } = await landlordA.rpc("manage_membership", {
+      p_tenant_id: ids.tenant_landlordB,
+      p_user_id: ids.rNew,
+      p_role: "renter",
+      p_status: "active",
+    });
+    expect(error).toBeTruthy();
   });
 
   it("direct assignment insert is blocked", async () => {
@@ -179,6 +294,17 @@ describeRental("Phase 2 rental RLS & workflows", () => {
       rent_amount: 100,
       start_date: "2026-10-01",
       status: "active",
+    });
+    expect(error).toBeTruthy();
+  });
+
+  it("landlord B cannot assign_renter on landlord A property", async () => {
+    const client = await asUser(emails.llB, password);
+    const { error } = await client.rpc("assign_renter", {
+      p_property_id: ids.propA,
+      p_renter_id: ids.rA,
+      p_rent_amount: 100,
+      p_start_date: "2026-10-01",
     });
     expect(error).toBeTruthy();
   });
@@ -205,6 +331,109 @@ describeRental("Phase 2 rental RLS & workflows", () => {
       p_start_date: "2026-10-02",
     });
     expect(second.error).toBeTruthy();
+  });
+
+  it("create_rent_charge works for landlord on active assignment", async () => {
+    const landlord = await asUser(emails.llA, password);
+    const { data, error } = await landlord.rpc("create_rent_charge", {
+      p_assignment_id: ids.assignmentA,
+      p_period_start: "2026-11-01",
+      p_period_end: "2026-11-30",
+      p_due_date: "2026-11-05",
+      p_amount_due: 100,
+    });
+    expect(error).toBeNull();
+    expect(data?.id).toBeTruthy();
+    ids.chargeNov = data.id;
+  });
+
+  it("landlord B cannot create_rent_charge on landlord A assignment", async () => {
+    const landlordB = await asUser(emails.llB, password);
+    const { error } = await landlordB.rpc("create_rent_charge", {
+      p_assignment_id: ids.assignmentA,
+      p_period_start: "2026-12-01",
+      p_period_end: "2026-12-31",
+      p_due_date: "2026-12-05",
+      p_amount_due: 100,
+    });
+    expect(error).toBeTruthy();
+  });
+
+  it("renter can upload rent payment proof; landlord B cannot", async () => {
+    const path = `${ids.tenant_landlordA}/${ids.assignmentA}/${randomUUID()}.png`;
+    const bytes = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      ),
+      (c) => c.charCodeAt(0),
+    );
+
+    const renter = await asUser(emails.rA, password);
+    const { error: upErr } = await renter.storage.from("payment-proofs").upload(path, bytes, {
+      contentType: "image/png",
+      upsert: false,
+    });
+    expect(upErr).toBeNull();
+
+    const landlordA = await asUser(emails.llA, password);
+    const { data: signed, error: signErr } = await landlordA.storage
+      .from("payment-proofs")
+      .createSignedUrl(path, 60);
+    expect(signErr).toBeNull();
+    expect(signed?.signedUrl).toBeTruthy();
+
+    const landlordB = await asUser(emails.llB, password);
+    const badPath = `${ids.tenant_landlordA}/${ids.assignmentA}/${randomUUID()}.png`;
+    const { error: badUp } = await landlordB.storage.from("payment-proofs").upload(badPath, bytes, {
+      contentType: "image/png",
+      upsert: false,
+    });
+    expect(badUp).toBeTruthy();
+  });
+
+  it("landlord B cannot complete_move_out on landlord A assignment", async () => {
+    const landlordB = await asUser(emails.llB, password);
+    const { error } = await landlordB.rpc("complete_move_out", {
+      p_assignment_id: ids.assignmentA,
+      p_end_date: "2026-10-12",
+    });
+    expect(error).toBeTruthy();
+  });
+
+  it("landlord B cannot review landlord A payment", async () => {
+    const renter = await asUser(emails.rA, password);
+    const { data: payment, error: payErr } = await renter
+      .from("rent_payments")
+      .insert({
+        rent_charge_id: ids.chargeA,
+        amount: 10,
+        method: "cash",
+        tenant_id: ids.tenant_landlordA,
+        property_id: ids.propA,
+        assignment_id: ids.assignmentA,
+        payer_id: ids.rA,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+    expect(payErr).toBeNull();
+    ids.paymentCross = payment!.id;
+
+    const landlordB = await asUser(emails.llB, password);
+    const { error } = await landlordB.rpc("review_rent_payment", {
+      p_payment_id: ids.paymentCross,
+      p_decision: "approve",
+    });
+    expect(error).toBeTruthy();
+
+    // Cleanup pending so later approve flow stays deterministic
+    const landlordA = await asUser(emails.llA, password);
+    const { error: rejErr } = await landlordA.rpc("review_rent_payment", {
+      p_payment_id: ids.paymentCross,
+      p_decision: "reject",
+      p_rejection_reason: "cross-tenant isolation fixture",
+    });
+    expect(rejErr).toBeNull();
   });
 
   it("renter A can read own charge but not another renter payment after isolation setup", async () => {
@@ -259,8 +488,95 @@ describeRental("Phase 2 rental RLS & workflows", () => {
     expect(again.error).toBeTruthy();
   });
 
-  it("rejected payment retains history and allows later resubmit", async () => {
+  it("RPC reject without a valid reason leaves payment pending and charge unchanged", async () => {
     const renter = await asUser(emails.rA, password);
+    const { data: payment, error } = await renter
+      .from("rent_payments")
+      .insert({
+        rent_charge_id: ids.chargeA,
+        amount: 15,
+        method: "cash",
+        tenant_id: ids.tenant_landlordA,
+        property_id: ids.propA,
+        assignment_id: ids.assignmentA,
+        payer_id: ids.rA,
+        status: "pending",
+      })
+      .select("*")
+      .single();
+    expect(error).toBeNull();
+    ids.paymentRejectGuard = payment!.id;
+
+    const landlord = await asUser(emails.llA, password);
+    const { data: chargeBefore } = await landlord
+      .from("rent_charges")
+      .select("amount_paid,balance,status")
+      .eq("id", ids.chargeA)
+      .single();
+
+    const nullReason = await landlord.rpc("review_rent_payment", {
+      p_payment_id: payment!.id,
+      p_decision: "reject",
+      p_rejection_reason: null,
+    });
+    expect(nullReason.error).toBeTruthy();
+
+    const emptyReason = await landlord.rpc("review_rent_payment", {
+      p_payment_id: payment!.id,
+      p_decision: "reject",
+      p_rejection_reason: "",
+    });
+    expect(emptyReason.error).toBeTruthy();
+
+    const whitespaceReason = await landlord.rpc("review_rent_payment", {
+      p_payment_id: payment!.id,
+      p_decision: "reject",
+      p_rejection_reason: "  \t  ",
+    });
+    expect(whitespaceReason.error).toBeTruthy();
+
+    const omittedReason = await landlord.rpc("review_rent_payment", {
+      p_payment_id: payment!.id,
+      p_decision: "reject",
+    });
+    expect(omittedReason.error).toBeTruthy();
+
+    const { data: stillPending } = await landlord
+      .from("rent_payments")
+      .select("id,status,rejection_reason")
+      .eq("id", payment!.id)
+      .single();
+    expect(stillPending?.status).toBe("pending");
+    expect(stillPending?.rejection_reason).toBeNull();
+
+    const { data: chargeAfter } = await landlord
+      .from("rent_charges")
+      .select("amount_paid,balance,status")
+      .eq("id", ids.chargeA)
+      .single();
+    expect(Number(chargeAfter?.amount_paid)).toBe(Number(chargeBefore?.amount_paid));
+    expect(Number(chargeAfter?.balance)).toBe(Number(chargeBefore?.balance));
+    expect(chargeAfter?.status).toBe(chargeBefore?.status);
+
+    // Clean up pending so later reject/resubmit stays deterministic
+    const { error: cleanupErr } = await landlord.rpc("review_rent_payment", {
+      p_payment_id: payment!.id,
+      p_decision: "reject",
+      p_rejection_reason: "cleanup after missing-reason guard",
+    });
+    expect(cleanupErr).toBeNull();
+  });
+
+  it("rejected payment retains history, shows trimmed reason to renter, and allows later resubmit", async () => {
+    const renter = await asUser(emails.rA, password);
+    const landlord = await asUser(emails.llA, password);
+
+    const { data: chargeBefore } = await landlord
+      .from("rent_charges")
+      .select("amount_paid,balance,status")
+      .eq("id", ids.chargeA)
+      .single();
+
     const { data: payment, error } = await renter
       .from("rent_payments")
       .insert({
@@ -277,21 +593,64 @@ describeRental("Phase 2 rental RLS & workflows", () => {
       .single();
     expect(error).toBeNull();
 
-    const landlord = await asUser(emails.llA, password);
     const { data: rejected, error: rejErr } = await landlord.rpc("review_rent_payment", {
       p_payment_id: payment.id,
       p_decision: "reject",
-      p_rejection_reason: "unclear proof",
+      p_rejection_reason: "  unclear proof  ",
     });
     expect(rejErr).toBeNull();
     expect(rejected?.payment?.status).toBe("rejected");
+    expect(rejected?.payment?.rejection_reason).toBe("unclear proof");
 
     const { data: stillThere } = await landlord
       .from("rent_payments")
-      .select("id,status")
+      .select("id,status,rejection_reason")
       .eq("id", payment.id)
       .single();
     expect(stillThere?.status).toBe("rejected");
+    expect(stillThere?.rejection_reason).toBe("unclear proof");
+
+    const { data: chargeAfterReject } = await landlord
+      .from("rent_charges")
+      .select("amount_paid,balance,status")
+      .eq("id", ids.chargeA)
+      .single();
+    expect(Number(chargeAfterReject?.amount_paid)).toBe(Number(chargeBefore?.amount_paid));
+    expect(Number(chargeAfterReject?.balance)).toBe(Number(chargeBefore?.balance));
+    expect(chargeAfterReject?.status).toBe(chargeBefore?.status);
+
+    const { data: renterView } = await renter
+      .from("rent_payments")
+      .select("id,status,rejection_reason")
+      .eq("id", payment.id)
+      .single();
+    expect(renterView?.status).toBe("rejected");
+    expect(renterView?.rejection_reason).toBe("unclear proof");
+
+    const { data: resubmit, error: resubmitErr } = await renter
+      .from("rent_payments")
+      .insert({
+        rent_charge_id: ids.chargeA,
+        amount: 20,
+        method: "mobile_money",
+        tenant_id: ids.tenant_landlordA,
+        property_id: ids.propA,
+        assignment_id: ids.assignmentA,
+        payer_id: ids.rA,
+        status: "pending",
+      })
+      .select("id,status")
+      .single();
+    expect(resubmitErr).toBeNull();
+    expect(resubmit?.status).toBe("pending");
+
+    // Leave only one pending for later suites / move-out: reject the resubmit
+    const { error: closePendingErr } = await landlord.rpc("review_rent_payment", {
+      p_payment_id: resubmit!.id,
+      p_decision: "reject",
+      p_rejection_reason: "fixture close after resubmit check",
+    });
+    expect(closePendingErr).toBeNull();
   });
 
   it("renter B cannot read renter A payment", async () => {
@@ -317,3 +676,11 @@ describeRental("Phase 2 rental RLS & workflows", () => {
     expect((charges ?? []).length).toBeGreaterThan(0);
   });
 });
+
+if (!isolatedConfigured) {
+  describe.skip("Phase 2 rental RLS (skipped — not an isolated local Supabase target)", () => {
+    it("requires frontend/.env.isolated with loopback IJAARO_ISOLATED_* keys", () => {
+      expect(isolatedConfigured).toBe(false);
+    });
+  });
+}

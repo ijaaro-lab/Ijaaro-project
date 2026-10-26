@@ -14,6 +14,7 @@ export function statusTone(
     case "available":
     case "paid":
     case "active":
+    case "accepted":
     case "completed":
     case "valid":
       return "success";
@@ -39,19 +40,5 @@ export function statusTone(
       return "neutral";
     default:
       return "neutral";
-  }
-}
-
-/** Utility payment status labels for the simplified water workspace. */
-export function paymentStatusLabel(status: string): string {
-  switch (status) {
-    case "pending":
-      return "Pending";
-    case "paid":
-      return "Approved";
-    case "rejected":
-      return "Rejected";
-    default:
-      return status.replaceAll("_", " ");
   }
 }
