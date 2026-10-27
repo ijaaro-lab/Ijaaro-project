@@ -71,6 +71,8 @@ function renderShell(path: string, auth: Record<string, unknown>) {
           <Route path="/app/landlord/properties" element={<div>Properties page</div>} />
           <Route path="/app/landlord/staff" element={<div>Staff page</div>} />
           <Route path="/app/water" element={<div>Water page</div>} />
+          <Route path="/app/water/finance" element={<div>Finance page</div>} />
+          <Route path="/app/water/staff" element={<div>Water staff</div>} />
           <Route path="/app/branding" element={<div>Branding page</div>} />
           <Route path="/app/account" element={<div>Account page</div>} />
         </Route>
@@ -90,7 +92,7 @@ describe("AppShell navigation", () => {
     useAuth.mockReset();
   });
 
-  it("does not mark Dashboard active on /app/landlord/properties", () => {
+  it("does not mark Overview active on /app/landlord/properties", () => {
     const admin = mem({ id: "a", role: "landlord_admin", name: "LL A" });
     renderShell("/app/landlord/properties", {
       primaryRole: "landlord_admin",
@@ -98,13 +100,13 @@ describe("AppShell navigation", () => {
       memberships: [admin],
     });
     const drawer = openMobileNav();
-    const dashboard = within(drawer).getByRole("link", { name: /^Dashboard$/i });
-    expect(dashboard.getAttribute("aria-current")).toBeNull();
+    const overview = within(drawer).getByRole("link", { name: /^Overview$/i });
+    expect(overview.getAttribute("aria-current")).toBeNull();
     const properties = within(drawer).getByRole("link", { name: /^Properties$/i });
     expect(properties.getAttribute("aria-current")).toBe("page");
   });
 
-  it("hides branding for landlord_staff and shows for landlord_admin", () => {
+  it("hides company settings for landlord_staff and shows for landlord_admin", () => {
     const staff = mem({ id: "s", role: "landlord_staff" });
     const { unmount } = renderShell("/app/landlord", {
       primaryRole: "landlord_staff",
@@ -112,7 +114,7 @@ describe("AppShell navigation", () => {
       memberships: [staff],
     });
     const staffDrawer = openMobileNav();
-    expect(within(staffDrawer).queryByRole("link", { name: /^Branding$/i })).toBeNull();
+    expect(within(staffDrawer).queryByRole("link", { name: /^Company Settings$/i })).toBeNull();
     unmount();
 
     const admin = mem({ id: "a", role: "landlord_admin" });
@@ -122,7 +124,7 @@ describe("AppShell navigation", () => {
       memberships: [admin],
     });
     const adminDrawer = openMobileNav();
-    expect(within(adminDrawer).getByRole("link", { name: /^Branding$/i })).toBeTruthy();
+    expect(within(adminDrawer).getByRole("link", { name: /^Company Settings$/i })).toBeTruthy();
   });
 
   it("does not show water nav when landlord membership is active even if water membership exists", () => {
@@ -139,11 +141,11 @@ describe("AppShell navigation", () => {
       memberships: [landlord, water],
     });
     const drawer = openMobileNav();
-    expect(within(drawer).queryByRole("link", { name: /water dashboard/i })).toBeNull();
+    expect(within(drawer).queryByRole("link", { name: /finance & payments/i })).toBeNull();
     expect(within(drawer).getByRole("link", { name: /^Staff$/i })).toBeTruthy();
   });
 
-  it("shows water nav and branding when water admin is the active membership", () => {
+  it("shows simplified water nav and company settings when water admin is active", () => {
     const landlord = mem({ id: "ll", role: "landlord_admin", name: "LL" });
     const water = mem({
       id: "w",
@@ -157,9 +159,11 @@ describe("AppShell navigation", () => {
       memberships: [landlord, water],
     });
     const drawer = openMobileNav();
-    expect(within(drawer).getByRole("link", { name: /water dashboard/i })).toBeTruthy();
-    expect(within(drawer).queryByRole("link", { name: /^Staff$/i })).toBeNull();
-    expect(within(drawer).getByRole("link", { name: /^Branding$/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /^Overview$/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /^Customers$/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /finance & payments/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /^Staff$/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /^Company Settings$/i })).toBeTruthy();
   });
 
   it("exposes a mobile menu control that opens workspace navigation", () => {
@@ -171,5 +175,6 @@ describe("AppShell navigation", () => {
     });
     const drawer = openMobileNav();
     expect(within(drawer).getByRole("link", { name: /^Staff$/i })).toBeTruthy();
+    expect(within(drawer).getByRole("link", { name: /tenancies & rent/i })).toBeTruthy();
   });
 });

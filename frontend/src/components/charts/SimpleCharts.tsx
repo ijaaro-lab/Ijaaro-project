@@ -133,6 +133,7 @@ type BarChartProps = {
   className?: string;
   emptyLabel?: string;
   showValues?: boolean;
+  formatValue?: (n: number) => string;
 };
 
 export function BarChart({
@@ -143,8 +144,10 @@ export function BarChart({
   className,
   emptyLabel = "No data yet",
   showValues = true,
+  formatValue,
 }: BarChartProps) {
   const max = Math.max(...points.map((p) => p.value), 1);
+  const display = (n: number) => (formatValue ? formatValue(n) : String(n));
 
   if (points.length === 0) {
     return (
@@ -173,7 +176,7 @@ export function BarChart({
             >
               {showValues && p.value > 0 && (
                 <span className="text-xs font-semibold tabular-nums text-foreground">
-                  {p.value}
+                  {display(p.value)}
                 </span>
               )}
               <div
@@ -184,7 +187,7 @@ export function BarChart({
                   minHeight: p.value > 0 ? 8 : 2,
                   opacity: p.value > 0 ? 1 : 0.35,
                 }}
-                title={`${p.label}: ${p.value}`}
+                title={`${p.label}: ${display(p.value)}`}
               />
             </div>
           );

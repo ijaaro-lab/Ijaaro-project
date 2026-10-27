@@ -4,7 +4,6 @@ import {
   Building2,
   CheckCircle2,
   Eye,
-  EyeOff,
   Home,
   MapPin,
   MoreHorizontal,
@@ -13,12 +12,12 @@ import {
   Search,
   Trash2,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MetricCard, MetricRow } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
 import {
   createPropertyPhotoSignedUrl,
@@ -32,15 +31,6 @@ import type { Property, PropertyStatus } from "@/types/database";
 type StatusFilter = "all" | PropertyStatus;
 type ListedFilter = "all" | "published" | "unpublished";
 type SortKey = "newest" | "oldest" | "name" | "rent_high" | "rent_low";
-type StatAccent = "navy" | "green" | "teal" | "orange" | "pink";
-
-const STAT_ACCENTS: Record<StatAccent, string> = {
-  navy: "bg-brand-navy/10 text-brand-navy dark:bg-brand-blue/20 dark:text-brand-water",
-  green: "bg-brand-green/10 text-brand-green dark:bg-brand-green/20 dark:text-brand-green",
-  teal: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300",
-  orange: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
-  pink: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-300",
-};
 
 /** Matches intended RLS: not occupied and no current renter. */
 export function isPropertyDeletable(property: Property): boolean {
@@ -78,34 +68,6 @@ export function formatPropertyDeleteFailure(
     return "Could not delete this property. It may be protected by access rules or still linked to other records.";
   }
   return "Could not delete this property.";
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  icon: LucideIcon;
-  accent: StatAccent;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/80 bg-card px-4 py-3.5 shadow-[0_2px_8px_rgba(11,31,58,0.05)] transition-shadow hover:shadow-[0_4px_14px_rgba(11,31,58,0.08)] dark:shadow-none dark:hover:shadow-none">
-      <div className="flex items-center gap-3">
-        <div className={cn("shrink-0 rounded-xl p-2.5", STAT_ACCENTS[accent])}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
-          <div className="mt-0.5 truncate font-display text-2xl font-bold leading-none tracking-tight text-foreground tabular-nums">
-            {value}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function PropertyThumb({
@@ -513,19 +475,22 @@ export function PropertiesPage() {
     rows.length > 0 && filtered.length === 0 && (q.trim() || statusFilter !== "all" || listedFilter !== "all" || districtFilter !== "all");
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
+          <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+            Landlord · Inventory
+          </p>
+          <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Properties
           </h2>
-          <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            Manage property listings for your landlord workspace — review status, publish
-            availability, and keep inventory up to date.
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Listings for this landlord workspace
+            {stats.unpublished > 0 ? ` · ${stats.unpublished} unpublished` : ""}
           </p>
         </div>
         <Link to="/app/landlord/properties/new" className="shrink-0">
-          <Button className="min-h-10 w-full gap-1.5 sm:w-auto">
+          <Button size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" aria-hidden />
             New property
           </Button>
@@ -535,116 +500,117 @@ export function PropertiesPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}
         </div>
       )}
 
       {loading ? (
-        <div
-          className="rounded-2xl border border-dashed border-border bg-card/60 px-4 py-12 text-center text-sm text-muted-foreground"
-          aria-live="polite"
-        >
+        <div className="text-sm text-muted-foreground" aria-live="polite">
           Loading properties…
         </div>
       ) : (
         <>
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="Total Properties" value={stats.total} icon={Building2} accent="navy" />
-        <StatCard label="Available" value={stats.available} icon={CheckCircle2} accent="green" />
-        <StatCard label="Occupied" value={stats.occupied} icon={Users} accent="teal" />
-        <StatCard label="Published" value={stats.published} icon={Eye} accent="orange" />
-        <StatCard label="Unpublished" value={stats.unpublished} icon={EyeOff} accent="pink" />
-      </div>
+      <MetricRow>
+        <MetricCard compact label="Properties" value={stats.total} icon={Building2} accent="navy" />
+        <MetricCard compact label="Available" value={stats.available} icon={CheckCircle2} accent="green" />
+        <MetricCard compact label="Occupied" value={stats.occupied} icon={Users} accent="water" />
+        <MetricCard compact label="Published" value={stats.published} icon={Eye} accent="warning" />
+      </MetricRow>
 
       <section
         aria-label="Search and filters"
-        className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-[0_2px_8px_rgba(11,31,58,0.05)] sm:p-4 dark:shadow-none"
+        className="rounded-2xl border border-border/80 bg-card p-3 shadow-[0_1px_2px_rgba(11,31,58,0.04)] sm:p-4 dark:border-border dark:shadow-none"
       >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <label className="relative block min-w-0 sm:col-span-2 xl:col-span-2">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+          <label className="relative block min-w-0 flex-1">
             <span className="sr-only">Search properties</span>
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
             />
             <Input
-              placeholder="Search by name, address, or district…"
+              placeholder="Search name, address, or district…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label="Search properties"
-              className="h-10 pl-9"
+              className="h-9 pl-9"
             />
           </label>
 
-          <Select
-            aria-label="Filter by status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          >
-            <option value="all">All statuses</option>
-            <option value="available">Available</option>
-            <option value="occupied">Occupied</option>
-            <option value="vacant">Vacant</option>
-          </Select>
-
-          <Select
-            aria-label="Filter by publish state"
-            value={listedFilter}
-            onChange={(e) => setListedFilter(e.target.value as ListedFilter)}
-          >
-            <option value="all">All publish states</option>
-            <option value="published">Published</option>
-            <option value="unpublished">Unpublished</option>
-          </Select>
-
-          <Select
-            aria-label="Sort properties"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-          >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="name">Name A–Z</option>
-            <option value="rent_high">Rent: high to low</option>
-            <option value="rent_low">Rent: low to high</option>
-          </Select>
-
-          {districts.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:contents">
             <Select
-              aria-label="Filter by district"
-              value={districtFilter}
-              onChange={(e) => setDistrictFilter(e.target.value)}
-              className="sm:col-span-2 xl:col-span-1"
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="h-9 lg:w-[9.5rem]"
             >
-              <option value="all">All districts</option>
-              {districts.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
+              <option value="all">All statuses</option>
+              <option value="available">Available</option>
+              <option value="occupied">Occupied</option>
+              <option value="vacant">Vacant</option>
             </Select>
-          )}
+
+            <Select
+              aria-label="Filter by publish state"
+              value={listedFilter}
+              onChange={(e) => setListedFilter(e.target.value as ListedFilter)}
+              className="h-9 lg:w-[10.5rem]"
+            >
+              <option value="all">All publish states</option>
+              <option value="published">Published</option>
+              <option value="unpublished">Unpublished</option>
+            </Select>
+
+            <Select
+              aria-label="Sort properties"
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="h-9 lg:w-[10.5rem]"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="name">Name A–Z</option>
+              <option value="rent_high">Rent: high to low</option>
+              <option value="rent_low">Rent: low to high</option>
+            </Select>
+
+            {districts.length > 0 ? (
+              <Select
+                aria-label="Filter by district"
+                value={districtFilter}
+                onChange={(e) => setDistrictFilter(e.target.value)}
+                className="col-span-2 h-9 sm:col-span-1 lg:w-[10rem]"
+              >
+                <option value="all">All districts</option>
+                {districts.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
         </div>
       </section>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center shadow-[0_2px_8px_rgba(11,31,58,0.04)] dark:shadow-none">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-navy/8 text-brand-navy dark:bg-brand-blue/15 dark:text-brand-water">
+        <div className="rounded-2xl border border-dashed border-border/80 bg-card px-6 py-12 text-center dark:border-border">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-brand-navy/8 text-brand-navy dark:bg-brand-blue/15 dark:text-brand-water">
             <Home className="h-5 w-5" aria-hidden />
           </div>
-          <p className="mt-4 text-sm font-medium text-foreground">
+          <p className="mt-3 text-sm font-medium text-foreground">
             {emptyBecauseFilters ? "No properties match your filters" : "No properties yet"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {emptyBecauseFilters
-              ? "Try adjusting search or filters to see more listings."
+              ? "Try adjusting search or filters."
               : "Create your first listing to get started."}
           </p>
           {!emptyBecauseFilters && (
-            <Link to="/app/landlord/properties/new" className="mt-4 inline-block">
-              <Button size="sm" className="min-h-9 gap-1.5">
+            <Link to="/app/landlord/properties/new" className="mt-3 inline-block">
+              <Button size="sm" className="gap-1.5">
                 <Plus className="h-4 w-4" aria-hidden />
                 New property
               </Button>
@@ -660,7 +626,7 @@ export function PropertiesPage() {
               return (
                 <li
                   key={p.id}
-                  className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-[0_2px_8px_rgba(11,31,58,0.05)] transition-shadow hover:shadow-[0_4px_14px_rgba(11,31,58,0.08)] dark:shadow-none dark:hover:shadow-none"
+                  className="rounded-2xl border border-border/80 bg-card p-3.5 dark:border-border"
                 >
                   <div className="flex items-start gap-3">
                     <PropertyThumb
@@ -708,22 +674,22 @@ export function PropertiesPage() {
           </ul>
 
           {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] md:block dark:shadow-none">
+          <div className="hidden overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] md:block dark:border-border dark:shadow-none">
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="border-b border-border/80 bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3.5 font-semibold sm:px-5">Property</th>
-                    <th className="px-4 py-3.5 font-semibold sm:px-5">Location</th>
-                    <th className="px-4 py-3.5 font-semibold sm:px-5">Monthly rent</th>
-                    <th className="px-4 py-3.5 font-semibold sm:px-5">Status</th>
-                    <th className="px-4 py-3.5 font-semibold sm:px-5">Listed</th>
-                    <th className="px-4 py-3.5 text-right font-semibold sm:px-5">
+                    <th className="px-4 py-3 font-semibold">Property</th>
+                    <th className="px-4 py-3 font-semibold">Location</th>
+                    <th className="px-4 py-3 font-semibold">Monthly rent</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Listed</th>
+                    <th className="px-4 py-3 text-right font-semibold">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/80">
+                <tbody className="divide-y divide-border">
                   {filtered.map((p) => {
                     const title = propertyTitle(p);
                     return (
@@ -731,12 +697,12 @@ export function PropertiesPage() {
                         key={p.id}
                         className="transition-colors hover:bg-muted/40 focus-within:bg-muted/40"
                       >
-                        <td className="px-4 py-3.5 sm:px-5">
+                        <td className="px-4 py-2.5">
                           <div className="flex items-center gap-3">
                             <PropertyThumb
                               name={title}
                               storagePath={coverByPropertyId[p.id]}
-                              className="h-12 w-12"
+                              className="h-10 w-10"
                             />
                             <Link
                               to={`/app/landlord/properties/${p.id}`}
@@ -746,26 +712,26 @@ export function PropertiesPage() {
                             </Link>
                           </div>
                         </td>
-                        <td className="max-w-[16rem] px-4 py-3.5 text-muted-foreground sm:px-5">
+                        <td className="max-w-[16rem] px-4 py-2.5 text-muted-foreground">
                           <div className="flex items-start gap-1.5">
                             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                             <span className="line-clamp-2 break-words">{propertyLocation(p)}</span>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 font-medium tabular-nums sm:px-5">
+                        <td className="whitespace-nowrap px-4 py-2.5 font-medium tabular-nums">
                           {money(p.rent_amount, p.currency)}
                         </td>
-                        <td className="px-4 py-3.5 sm:px-5">
+                        <td className="px-4 py-2.5">
                           <Badge tone={statusTone(p.status)} className="capitalize">
                             {p.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5 sm:px-5">
+                        <td className="px-4 py-2.5">
                           <Badge tone={p.is_listed ? "success" : "neutral"}>
                             {p.is_listed ? "Published" : "Unpublished"}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5 text-right sm:px-5">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="inline-flex justify-end">
                             <PropertyActions
                               property={p}
@@ -780,7 +746,7 @@ export function PropertiesPage() {
                 </tbody>
               </table>
             </div>
-            <div className="border-t border-border/80 px-4 py-3 text-xs text-muted-foreground sm:px-5">
+            <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
               Showing {filtered.length} of {rows.length}{" "}
               {rows.length === 1 ? "property" : "properties"}
             </div>

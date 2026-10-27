@@ -7,6 +7,27 @@ export function money(amount: number | null | undefined, currency = "USD") {
   }).format(Number(amount));
 }
 
+export function paymentStatusLabel(status: string): string {
+  switch (status) {
+    case "paid":
+      return "Approved";
+    case "pending":
+      return "Pending";
+    case "processing":
+      return "Processing";
+    case "rejected":
+      return "Rejected";
+    case "failed":
+      return "Failed";
+    case "cancelled":
+      return "Cancelled";
+    case "refunded":
+      return "Refunded";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
 export function statusTone(
   status: string,
 ): "success" | "warning" | "info" | "danger" | "neutral" {

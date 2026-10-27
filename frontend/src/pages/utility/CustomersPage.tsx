@@ -82,7 +82,7 @@ export function CustomersPage({ kind }: { kind: UtilityKind }) {
 
   if (!tenantId || !matchesKind) {
     return (
-      <div className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
         Switch to a {label.toLowerCase()} company membership to continue.
       </div>
     );

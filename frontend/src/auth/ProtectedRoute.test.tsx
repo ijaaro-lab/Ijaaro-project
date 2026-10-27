@@ -67,7 +67,7 @@ describe("ProtectedRoute tenant bounce (RP-1.3.28 / RP-1.3.30)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/loading session/i)).toBeTruthy();
+    expect(screen.getByText(/^Loading/i)).toBeTruthy();
     expect(screen.queryByText("Tenant landing")).toBeNull();
     expect(screen.queryByText("Renter dashboard")).toBeNull();
   });

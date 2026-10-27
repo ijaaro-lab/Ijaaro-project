@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MetricCard, MetricRow } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { money, statusTone } from "@/lib/format";
@@ -528,95 +529,77 @@ export function TenanciesPage() {
     />
   );
 
+  const activeCount = rows.filter((r) => r.status === "active").length;
+  const completedCount = rows.filter((r) => r.status === "completed").length;
+  const invitedCount = rows.filter((r) => r.status === "invited").length;
+
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <section
-        aria-labelledby="tenancies-heading"
-        className="relative overflow-hidden rounded-2xl border border-sky-100/90 bg-gradient-to-br from-sky-50 via-sky-50/70 to-white px-4 py-6 sm:px-6 sm:py-7 dark:border-sky-500/20 dark:from-sky-950/35 dark:via-sky-950/20 dark:to-card"
-      >
-        <div
-          className="pointer-events-none absolute -right-6 -top-8 h-36 w-36 rounded-full bg-sky-200/40 blur-2xl dark:bg-sky-500/15"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 right-8 hidden h-28 w-28 text-sky-300/50 sm:block dark:text-sky-500/20"
-          aria-hidden
+    <div className="space-y-5">
+      <div>
+        <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+          Landlord · Tenancies & Rent
+        </p>
+        <h2
+          id="tenancies-heading"
+          className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
         >
-          <ClipboardList className="h-full w-full" strokeWidth={1} />
-        </div>
-        <div className="relative min-w-0 max-w-2xl">
-          <h2
-            id="tenancies-heading"
-            className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
-          >
-            Tenancies
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]">
-            Manage active and historical rental assignments across your properties — review
-            renters, rent amounts, dates, and status in one place.
-          </p>
-        </div>
-      </section>
+          Tenancies
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Active and historical rental assignments across your properties.
+        </p>
+      </div>
 
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}
         </div>
       )}
 
+      <MetricRow>
+        <MetricCard compact label="Total" value={rows.length} icon={ClipboardList} accent="navy" />
+        <MetricCard compact label="Active" value={activeCount} icon={Home} accent="green" />
+        <MetricCard compact label="Invited" value={invitedCount} icon={Eye} accent="water" />
+        <MetricCard compact label="Completed" value={completedCount} icon={Pencil} accent="warning" />
+      </MetricRow>
+
       <section
         aria-label="Tenancy records"
-        className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:shadow-none"
+        className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none"
       >
-        <div className="border-b border-border/80 px-4 py-3.5 sm:px-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
-                <ClipboardList className="h-4 w-4" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-display text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                  Tenancy Records
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-                  View and manage all rental assignments.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
-              <label className="relative block min-w-0 flex-1 lg:w-64">
-                <span className="sr-only">Search tenancies</span>
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <Input
-                  placeholder="Search tenant or property…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search tenancies by tenant or property"
-                  className="h-10 pl-9"
-                  disabled={loading}
-                />
-              </label>
-              <Select
-                aria-label="Filter by status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="h-10 sm:w-48"
+        <div className="border-b border-border px-4 py-3.5 sm:px-5">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+            <label className="relative block min-w-0 flex-1">
+              <span className="sr-only">Search tenancies</span>
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                placeholder="Search tenant or property…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search tenancies by tenant or property"
+                className="h-9 pl-9"
                 disabled={loading}
-              >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="invited">Invited</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </Select>
-            </div>
+              />
+            </label>
+            <Select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="h-9 sm:w-48"
+              disabled={loading}
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="invited">Invited</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
           </div>
         </div>
 

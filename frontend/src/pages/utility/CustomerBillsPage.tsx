@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { Download } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { brandingString } from "@/lib/uploadImage";
 import { money, statusTone } from "@/lib/format";
+import { openUtilityInvoice } from "@/lib/utilityInvoice";
+import { supabase } from "@/lib/supabase";
 import type { UtilityBill } from "@/types/database";
 import { KIND_LABEL, KIND_TENANT_TYPE, type UtilityKind } from "./shared";
 
@@ -12,6 +16,9 @@ export function CustomerBillsPage({ kind }: { kind: UtilityKind }) {
   const matchesKind = activeMembership?.tenant.tenant_type === KIND_TENANT_TYPE[kind];
   const isCustomer = activeMembership?.role === "utility_customer";
   const label = KIND_LABEL[kind];
+  const branding = (activeMembership?.tenant.branding ?? {}) as Record<string, unknown>;
+  const companyName =
+    brandingString(branding, "display_name") || activeMembership?.tenant.name || label;
 
   const [bills, setBills] = useState<UtilityBill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +111,7 @@ export function CustomerBillsPage({ kind }: { kind: UtilityKind }) {
                 <th className="px-4 py-3 font-semibold">Balance</th>
                 <th className="px-4 py-3 font-semibold">Due</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold text-right">Invoice</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -118,6 +126,23 @@ export function CustomerBillsPage({ kind }: { kind: UtilityKind }) {
                   <td className="px-4 py-3">{b.due_date}</td>
                   <td className="px-4 py-3">
                     <Badge tone={statusTone(b.status)}>{b.status}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openUtilityInvoice({
+                          bill: b,
+                          kind,
+                          companyName,
+                        })
+                      }
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
                   </td>
                 </tr>
               ))}

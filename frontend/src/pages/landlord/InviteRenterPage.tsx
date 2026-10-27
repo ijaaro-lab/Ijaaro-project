@@ -353,6 +353,7 @@ export function InviteRenterPage() {
   const [viewing, setViewing] = useState<RenterRow | null>(null);
   const [pendingRemove, setPendingRemove] = useState<RenterRow | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [inviteMode, setInviteMode] = useState<"provision" | "link">("provision");
   /** Synchronous guard — blocks double-submit before React re-renders. */
   const provisionInFlight = useRef(false);
   const removeInFlight = useRef(false);
@@ -565,75 +566,43 @@ export function InviteRenterPage() {
   };
 
   return (
-    <div className="relative space-y-5 sm:space-y-6">
-      {/* Lightweight housing accent (CSS only; no new assets) */}
-      <div
-        className="pointer-events-none absolute -right-2 -top-1 hidden h-28 w-40 opacity-[0.14] sm:block"
-        aria-hidden
-      >
-        <svg viewBox="0 0 160 112" fill="none" className="h-full w-full text-brand-blue">
-          <path
-            d="M18 78 L48 48 L78 78 V98 H18 Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            fill="currentColor"
-            fillOpacity="0.12"
-          />
-          <path
-            d="M62 70 L98 38 L134 70 V98 H62 Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            fill="currentColor"
-            fillOpacity="0.08"
-          />
-          <circle cx="128" cy="34" r="18" fill="currentColor" fillOpacity="0.2" />
-          <path
-            d="M120 38 L128 30 L136 38 V44 H120 Z"
-            stroke="white"
-            strokeWidth="1.5"
-            fill="white"
-            fillOpacity="0.9"
-          />
-        </svg>
-      </div>
-
-      <div className="relative min-w-0">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
-          Invite renter
-        </h2>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          {activeMembership.tenant.name}
-          <span className="text-muted-foreground/70"> · isolated tenant</span>
-        </p>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Add a <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">renter</code>{" "}
-          on{" "}
-          <span className="font-medium text-foreground">{activeMembership.tenant.name}</span>{" "}
-          only. Assignment to a property is a separate step. Login stays email + password; username
-          is unique within this landlord. Self-serve applications are reviewed under{" "}
-          <Link
-            to="/app/landlord/applications"
-            className="rounded-md font-medium text-brand-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Applications
-          </Link>
-          .
-        </p>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+            Landlord · Tenancies & Rent
+          </p>
+          <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Invite renter
+          </h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Add renters to {activeMembership.tenant.name}. Property assignment is a separate step.{" "}
+            <Link to="/app/landlord/applications" className="font-medium text-brand-blue hover:underline">
+              Review applications
+            </Link>
+          </p>
+        </div>
+        <Link to="/app/landlord/properties" className="shrink-0">
+          <Button type="button" variant="outline" size="sm" className="gap-1.5">
+            <Building2 className="h-4 w-4" aria-hidden />
+            Properties
+          </Button>
+        </Link>
       </div>
 
       {!canInvite && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
         >
-          Landlord staff can view renters here, but only a landlord admin can invite.
+          Only a landlord admin can invite renters.
         </div>
       )}
 
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}
         </div>
@@ -641,212 +610,201 @@ export function InviteRenterPage() {
       {message && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
         >
           {message}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-        {/* Card A — Provision new renter */}
-        <form
-          onSubmit={(e) => void onProvision(e)}
-          className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_rgba(11,31,58,0.05)] sm:p-5 dark:shadow-none"
-          aria-busy={provisioning}
+      <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none sm:p-5">
+        <div
+          role="tablist"
+          aria-label="Invite method"
+          className="mb-4 flex w-full gap-1 rounded-xl border border-border/80 bg-muted/40 p-1 sm:w-auto sm:max-w-md"
         >
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
-              <UserPlus className="h-4 w-4" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-display text-sm font-semibold tracking-tight text-foreground">
-                Provision new renter
-              </h3>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Creates an Auth invite (no password chosen here). Existing Auth emails are refused —
-                use Link Existing User instead. Activation links are never shown in this UI.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="renter-full-name">Full name</Label>
-              <div className="relative mt-1.5">
-                <FieldIcon>
-                  <User className="h-4 w-4" aria-hidden />
-                </FieldIcon>
-                <Input
-                  id="renter-full-name"
-                  name="fullName"
-                  className="pl-9"
-                  required
-                  disabled={!canInvite || provisioning}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name"
-                  autoComplete="name"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="renter-username">Username</Label>
-              <div className="relative mt-1.5">
-                <FieldIcon>
-                  <User className="h-4 w-4" aria-hidden />
-                </FieldIcon>
-                <Input
-                  id="renter-username"
-                  name="username"
-                  className="pl-9"
-                  required
-                  disabled={!canInvite || provisioning}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. jane_doe"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="renter-phone">Phone</Label>
-              <div className="relative mt-1.5">
-                <FieldIcon>
-                  <Phone className="h-4 w-4" aria-hidden />
-                </FieldIcon>
-                <Input
-                  id="renter-phone"
-                  name="phone"
-                  className="pl-9"
-                  required
-                  disabled={!canInvite || provisioning}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+252..."
-                  autoComplete="tel"
-                />
-              </div>
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="renter-email">Email</Label>
-              <div className="relative mt-1.5">
-                <FieldIcon>
-                  <Mail className="h-4 w-4" aria-hidden />
-                </FieldIcon>
-                <Input
-                  id="renter-email"
-                  name="email"
-                  type="email"
-                  className="pl-9"
-                  required
-                  disabled={!canInvite || provisioning}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email address"
-                  autoComplete="email"
-                />
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={!canInvite || provisioning}
-            className="mt-4 min-h-10 w-full sm:w-auto"
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inviteMode === "provision"}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+              inviteMode === "provision"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setInviteMode("provision")}
           >
-            <Send className="h-4 w-4" aria-hidden />
-            {provisioning ? "Provisioning…" : "Provision renter"}
-          </Button>
-        </form>
+            <UserPlus className="h-3.5 w-3.5" aria-hidden />
+            New renter
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={inviteMode === "link"}
+            className={cn(
+              "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+              inviteMode === "link"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setInviteMode("link")}
+          >
+            <Link2 className="h-3.5 w-3.5" aria-hidden />
+            Link existing
+          </button>
+        </div>
 
-        {/* Card B — Link existing user */}
-        <form
-          onSubmit={(e) => void onLinkExisting(e)}
-          className="flex flex-col rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_rgba(11,31,58,0.05)] sm:p-5 dark:shadow-none"
-          aria-busy={linking}
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green dark:bg-brand-green/20">
-              <Link2 className="h-4 w-4" aria-hidden />
+        {inviteMode === "provision" ? (
+          <form onSubmit={(e) => void onProvision(e)} aria-busy={provisioning}>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Sends an Auth invite. Existing emails should use Link existing.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2 lg:col-span-2">
+                <Label htmlFor="renter-full-name">Full name</Label>
+                <div className="relative mt-1">
+                  <FieldIcon>
+                    <User className="h-4 w-4" aria-hidden />
+                  </FieldIcon>
+                  <Input
+                    id="renter-full-name"
+                    name="fullName"
+                    className="h-9 pl-9"
+                    required
+                    disabled={!canInvite || provisioning}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Full name"
+                    autoComplete="name"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="renter-username">Username</Label>
+                <div className="relative mt-1">
+                  <FieldIcon>
+                    <User className="h-4 w-4" aria-hidden />
+                  </FieldIcon>
+                  <Input
+                    id="renter-username"
+                    name="username"
+                    className="h-9 pl-9"
+                    required
+                    disabled={!canInvite || provisioning}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="jane_doe"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="renter-phone">Phone</Label>
+                <div className="relative mt-1">
+                  <FieldIcon>
+                    <Phone className="h-4 w-4" aria-hidden />
+                  </FieldIcon>
+                  <Input
+                    id="renter-phone"
+                    name="phone"
+                    className="h-9 pl-9"
+                    required
+                    disabled={!canInvite || provisioning}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+252..."
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <Label htmlFor="renter-email">Email</Label>
+                <div className="relative mt-1">
+                  <FieldIcon>
+                    <Mail className="h-4 w-4" aria-hidden />
+                  </FieldIcon>
+                  <Input
+                    id="renter-email"
+                    name="email"
+                    type="email"
+                    className="h-9 pl-9"
+                    required
+                    disabled={!canInvite || provisioning}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email address"
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                <Button
+                  type="submit"
+                  disabled={!canInvite || provisioning}
+                  className="h-9 w-full"
+                >
+                  <Send className="h-4 w-4" aria-hidden />
+                  {provisioning ? "Sending…" : "Invite"}
+                </Button>
+              </div>
             </div>
+          </form>
+        ) : (
+          <form onSubmit={(e) => void onLinkExisting(e)} aria-busy={linking}>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Paste the user ID from an account that already signed up.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="renter-user-id">Renter user ID</Label>
+                <div className="relative mt-1">
+                  <FieldIcon>
+                    <Link2 className="h-4 w-4" aria-hidden />
+                  </FieldIcon>
+                  <Input
+                    id="renter-user-id"
+                    name="userId"
+                    className="h-9 pl-9 font-mono text-[13px]"
+                    required
+                    disabled={!canInvite || linking}
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={!canInvite || linking}
+                className="h-9 shrink-0"
+              >
+                <Link2 className="h-4 w-4" aria-hidden />
+                {linking ? "Linking…" : "Link user"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:shadow-none">
+        <div className="border-b border-border/80 px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h3 className="font-display text-sm font-semibold tracking-tight text-foreground">
-                Link existing user
+                Active renters
               </h3>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                The renter must already have signed up. Paste the user ID from their Account page.
-                Email lookup is reserved for Super Admin; this uses{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-[11px] text-foreground">
-                  manage_membership
-                </code>{" "}
-                on your active tenant.
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Linked to {activeMembership.tenant.name}
               </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex-1">
-            <Label htmlFor="renter-user-id">Renter user ID</Label>
-            <div className="relative mt-1.5">
-              <FieldIcon>
-                <Link2 className="h-4 w-4" aria-hidden />
-              </FieldIcon>
-              <Input
-                id="renter-user-id"
-                name="userId"
-                className="pl-9 font-mono text-[13px]"
-                required
-                disabled={!canInvite || linking}
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button
-              type="submit"
-              disabled={!canInvite || linking}
-              className="min-h-10 w-full sm:w-auto"
-            >
-              <Link2 className="h-4 w-4" aria-hidden />
-              {linking ? "Linking…" : "Link existing user"}
-            </Button>
-            <Link to="/app/landlord/properties" className="w-full sm:w-auto">
-              <Button type="button" variant="outline" className="min-h-10 w-full sm:w-auto">
-                <Building2 className="h-4 w-4" aria-hidden />
-                Go to properties
-              </Button>
-            </Link>
-          </div>
-        </form>
-      </div>
-
-      <section className="rounded-2xl border border-border/80 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:shadow-none">
-        <div className="border-b border-border/80 px-4 py-3.5 sm:px-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy dark:bg-brand-blue/20 dark:text-brand-water">
-                <Users className="h-4 w-4" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-display text-sm font-semibold tracking-tight text-foreground">
-                  Active renters on this workspace
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Renters already linked to {activeMembership.tenant.name}. Assign properties
-                  separately.
-                </p>
-              </div>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <label className="relative block min-w-0 flex-1 sm:w-56">
+              <label className="relative block min-w-0 flex-1 sm:w-52">
                 <span className="sr-only">Search renters</span>
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
                   aria-hidden
                 />
                 <Input
@@ -854,7 +812,7 @@ export function InviteRenterPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search renters by name or email"
-                  className="h-10 pl-9"
+                  className="h-9 pl-9"
                   disabled={loadingList}
                 />
               </label>
@@ -862,7 +820,7 @@ export function InviteRenterPage() {
                 aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="h-10 sm:w-40"
+                className="h-9 sm:w-36"
                 disabled={loadingList}
               >
                 <option value="all">All statuses</option>

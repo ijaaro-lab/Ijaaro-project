@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth, type MembershipWithTenant } from "@/auth/AuthProvider";
 import type { AppRole } from "@/types/database";
 import {
@@ -28,16 +28,43 @@ export function activeMembershipAllowsRoute(
   return true;
 }
 
+function AuthChecking({ fullScreen = false }: { fullScreen?: boolean }) {
+  return (
+    <div
+      className={
+        fullScreen
+          ? "flex min-h-screen items-center justify-center bg-background text-muted-foreground"
+          : "flex min-h-[40vh] items-center justify-center text-muted-foreground"
+      }
+      role="status"
+      aria-live="polite"
+    >
+      Loading…
+    </div>
+  );
+}
+
+/** True while `?tenant=` / host slug points at a membership that is not active yet. */
+export function isWorkspaceSwitchPending(
+  memberships: MembershipWithTenant[],
+  activeMembership: MembershipWithTenant | null | undefined,
+  tenantSlug: string | null | undefined,
+): boolean {
+  const slug = tenantSlug?.trim().toLowerCase();
+  if (!slug || memberships.length === 0) return false;
+  const match = memberships.find(
+    (m) => m.tenant.slug === slug || m.tenant.subdomain === slug,
+  );
+  if (!match) return false;
+  return match.id !== activeMembership?.id;
+}
+
 export function ProtectedRoute() {
   const { session, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Loading session…
-      </div>
-    );
+    return <AuthChecking fullScreen />;
   }
 
   if (!session) {
@@ -78,11 +105,7 @@ export function SuperAdminRoute() {
   const { isSuperAdmin, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Checking authorization…
-      </div>
-    );
+    return <AuthChecking />;
   }
 
   if (!isSuperAdmin) {
@@ -104,19 +127,23 @@ export function RoleRoute({
   tenantTypes?: string[];
   message: string;
 }) {
-  const { loading, activeMembership, isSuperAdmin } = useAuth();
+  const { loading, activeMembership, isSuperAdmin, memberships } = useAuth();
+  const [params] = useSearchParams();
+  const tenantSlug = params.get("tenant");
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Checking authorization…
-      </div>
-    );
+    return <AuthChecking />;
   }
 
   // Platform Super Admin uses /app/admin only — never tenant role areas.
   if (isSuperAdmin) {
     return <Navigate to="/app/admin" replace />;
+  }
+
+  // TenantSlugSync applies URL workspace on the next effect tick — wait so we
+  // do not flash Unauthorized for the previous (or null) active membership.
+  if (isWorkspaceSwitchPending(memberships, activeMembership, tenantSlug)) {
+    return <AuthChecking />;
   }
 
   const ok = activeMembershipAllowsRoute(activeMembership, allow, tenantTypes);

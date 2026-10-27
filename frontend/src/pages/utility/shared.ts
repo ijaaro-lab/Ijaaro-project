@@ -17,6 +17,49 @@ export const KIND_LABEL: Record<UtilityKind, string> = {
   electricity: "Electricity",
 };
 
+/**
+ * Flat monthly / finance-first ops UX (customers, finance, reports, staff).
+ * Meter routes remain registered for future use but are not the primary product path.
+ */
+export function isSimplifiedFinance(_kind: UtilityKind): boolean {
+  return true;
+}
+
+export function monthlyFeeLabel(kind: UtilityKind): string {
+  return kind === "water" ? "Water fee" : "Electricity fee";
+}
+
+export function serviceLabel(kind: UtilityKind): string {
+  return kind === "water" ? "Water service" : "Electricity service";
+}
+
+export function companyFallbackName(kind: UtilityKind): string {
+  return kind === "water" ? "Water company" : "Electricity company";
+}
+
+/** Tailwind brand token fragment: brand-water | brand-power */
+export function accentBrand(kind: UtilityKind): "water" | "power" {
+  return kind === "water" ? "water" : "power";
+}
+
 export function utilityPath(kind: UtilityKind, suffix = "") {
   return `/app/${kind}${suffix}`;
+}
+
+/**
+ * Monthly bills may be issued months ahead, but only months that have
+ * started count toward balance / payment. Future months stay hidden until their
+ * period begins.
+ */
+export function isBillPeriodOpen(bill: {
+  period_start: string;
+  balance?: number | null;
+  status?: string;
+}): boolean {
+  if (bill.status === "cancelled") return false;
+  if (bill.balance != null && Number(bill.balance) <= 0) return false;
+  const periodMonth = bill.period_start.slice(0, 7); // YYYY-MM
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return periodMonth <= currentMonth;
 }

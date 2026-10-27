@@ -4,6 +4,7 @@ import type { AppRole, TenantType } from "@/types/database";
 import {
   canShowBrandingNav,
   navForRole,
+  navItemIsActive,
   navLinkUsesExactEnd,
   utilityNavForActiveMembership,
 } from "./appShellNav";
@@ -44,15 +45,50 @@ function mem(partial: {
 }
 
 describe("navLinkUsesExactEnd", () => {
-  it("marks landlord Dashboard for exact match so child routes stay inactive", () => {
+  it("marks landlord Overview for exact match so child routes stay inactive", () => {
     expect(navLinkUsesExactEnd("/app/landlord")).toBe(true);
     expect(navLinkUsesExactEnd("/app/landlord/properties")).toBe(false);
     expect(navLinkUsesExactEnd("/app/renter")).toBe(true);
   });
 });
 
+describe("navItemIsActive", () => {
+  it("activates Tenancies & Rent for payments and renters paths", () => {
+    const item = {
+      to: "/app/landlord/tenancies",
+      label: "Tenancies & Rent",
+      icon: (() => null) as never,
+      activePrefixes: [
+        "/app/landlord/tenancies",
+        "/app/landlord/payments",
+        "/app/landlord/renters",
+      ],
+    };
+    expect(navItemIsActive(item, "/app/landlord/payments")).toBe(true);
+    expect(navItemIsActive(item, "/app/landlord/properties")).toBe(false);
+  });
+
+  it("activates Finance & Payments for bills and meters", () => {
+    const item = {
+      to: "/app/water/finance",
+      label: "Finance & Payments",
+      icon: (() => null) as never,
+      activePrefixes: [
+        "/app/water/finance",
+        "/app/water/bills",
+        "/app/water/payments",
+        "/app/water/meters",
+        "/app/water/readings",
+        "/app/water/reports",
+      ],
+    };
+    expect(navItemIsActive(item, "/app/water/meters")).toBe(true);
+    expect(navItemIsActive(item, "/app/water/customers")).toBe(false);
+  });
+});
+
 describe("canShowBrandingNav", () => {
-  it("shows branding only for active landlord_admin or utility_admin", () => {
+  it("shows company settings only for active landlord_admin or utility_admin", () => {
     expect(
       canShowBrandingNav(mem({ id: "a", role: "landlord_admin", tenantType: "landlord" })),
     ).toBe(true);
@@ -78,7 +114,7 @@ describe("canShowBrandingNav", () => {
 });
 
 describe("utilityNavForActiveMembership", () => {
-  it("returns water staff links only when water membership is active", () => {
+  it("returns simplified water staff links only when water membership is active", () => {
     const water = mem({
       id: "w",
       role: "utility_admin",
@@ -86,8 +122,23 @@ describe("utilityNavForActiveMembership", () => {
       name: "Water Co",
     });
     const paths = utilityNavForActiveMembership(water).map((i) => i.to);
-    expect(paths.some((p) => p.startsWith("/app/water"))).toBe(true);
+    expect(paths).toEqual([
+      "/app/water",
+      "/app/water/customers",
+      "/app/water/finance",
+      "/app/water/staff",
+    ]);
     expect(paths.some((p) => p.startsWith("/app/electricity"))).toBe(false);
+  });
+
+  it("hides staff nav for utility_staff", () => {
+    const staff = mem({
+      id: "ws",
+      role: "utility_staff",
+      tenantType: "water_company",
+    });
+    const paths = utilityNavForActiveMembership(staff).map((i) => i.to);
+    expect(paths).toEqual(["/app/water", "/app/water/customers", "/app/water/finance"]);
   });
 
   it("hides utility nav when active membership is landlord", () => {
@@ -97,21 +148,29 @@ describe("utilityNavForActiveMembership", () => {
 });
 
 describe("navForRole (membership switching)", () => {
-  it("landlord admin includes Staff after Properties and branding", () => {
+  it("landlord admin uses simplified sidebar with Company Settings", () => {
     const admin = mem({ id: "a", role: "landlord_admin", tenantType: "landlord" });
     const paths = navForRole("landlord_admin", false, admin).map((i) => i.to);
-    expect(paths.indexOf("/app/landlord/staff")).toBeGreaterThan(
-      paths.indexOf("/app/landlord/properties"),
-    );
-    expect(paths).toContain("/app/branding");
-    expect(paths.some((p) => p.startsWith("/app/water"))).toBe(false);
+    expect(paths).toEqual([
+      "/app/landlord",
+      "/app/landlord/properties",
+      "/app/landlord/applications",
+      "/app/landlord/tenancies",
+      "/app/landlord/staff",
+      "/app/branding",
+      "/app/account",
+    ]);
+    const labels = navForRole("landlord_admin", false, admin).map((i) => i.label);
+    expect(labels).toContain("Tenancies & Rent");
+    expect(labels).toContain("Company Settings");
+    expect(labels).not.toContain("Invite renter");
+    expect(labels).not.toContain("Rent review");
   });
 
-  it("landlord staff omits admin ops and branding", () => {
+  it("landlord staff omits admin ops and company settings", () => {
     const staff = mem({ id: "s", role: "landlord_staff", tenantType: "landlord" });
     const paths = navForRole("landlord_staff", false, staff).map((i) => i.to);
     expect(paths).toEqual([
-      "/app",
       "/app/landlord",
       "/app/landlord/properties",
       "/app/account",
@@ -127,12 +186,13 @@ describe("navForRole (membership switching)", () => {
     const paths = navForRole("utility_admin", false, water).map((i) => i.to);
     expect(paths).not.toContain("/app/landlord");
     expect(paths).not.toContain("/app/landlord/staff");
-    expect(paths.some((p) => p.startsWith("/app/water"))).toBe(true);
+    expect(paths).toContain("/app/water");
+    expect(paths).toContain("/app/water/finance");
+    expect(paths).toContain("/app/water/staff");
     expect(paths).toContain("/app/branding");
   });
 
   it("landlord admin active while user also has water membership does not show water nav", () => {
-    // Callers must pass the *active* membership only — not the full array.
     const activeLandlord = mem({
       id: "ll",
       role: "landlord_admin",

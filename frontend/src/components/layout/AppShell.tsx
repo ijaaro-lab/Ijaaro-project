@@ -4,8 +4,8 @@ import {
   Bell,
   LogOut,
   Menu,
-  Palette,
   RefreshCw,
+  Settings,
   UserRound,
   X,
 } from "lucide-react";
@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   navForRole,
+  navItemIsActive,
   navLinkUsesExactEnd,
   type NavItem,
 } from "@/components/layout/appShellNav";
@@ -31,20 +32,22 @@ function utilityPageTitle(pathname: string, kind: UtilityKind): string | null {
   const base = `/app/${kind}`;
   if (pathname !== base && !pathname.startsWith(`${base}/`)) return null;
   const label = kind === "water" ? "Water" : "Electricity";
-  if (pathname.startsWith(`${base}/customers`)) return `${label} customers`;
-  if (pathname.startsWith(`${base}/meters`)) return `${label} meters`;
-  if (pathname.startsWith(`${base}/readings`)) return `${label} meter readings`;
-  if (pathname.startsWith(`${base}/bills`)) return `${label} bills`;
-  if (pathname.startsWith(`${base}/payments`)) return `${label} payment review`;
-  if (pathname.startsWith(`${base}/reports`)) return `${label} reports`;
+  if (pathname.startsWith(`${base}/customers`)) return "Customers";
+  if (pathname.startsWith(`${base}/staff`)) return "Staff";
+  if (pathname.startsWith(`${base}/finance`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/meters`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/readings`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/bills`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/payments`)) return "Finance & Payments";
+  if (pathname.startsWith(`${base}/reports`)) return "Finance & Payments";
   if (pathname.startsWith(`${base}/my-bills`)) return `My ${label.toLowerCase()} bills`;
   if (pathname.startsWith(`${base}/my-payments`)) return `My ${label.toLowerCase()} payments`;
-  return `${label} company`;
+  return "Overview";
 }
 
 function pageTitle(pathname: string, isSuperAdmin: boolean) {
   if (pathname.startsWith("/app/account")) return "Account";
-  if (pathname.startsWith("/app/branding")) return "Workspace branding";
+  if (pathname.startsWith("/app/branding")) return "Company Settings";
   if (pathname.startsWith("/app/admin/tenants")) return "Tenants";
   if (pathname.startsWith("/app/admin/properties")) return "Properties";
   if (pathname.startsWith("/app/admin/water")) return "Water";
@@ -55,15 +58,15 @@ function pageTitle(pathname: string, isSuperAdmin: boolean) {
   if (pathname === "/app/admin" || pathname === "/app/admin/") return "Overview";
   if (pathname.startsWith("/app/admin")) return "Platform dashboard";
   if (pathname.startsWith("/app/landlord/properties")) return "Properties";
-  if (pathname.startsWith("/app/landlord/staff")) return "Staff management";
-  if (pathname.startsWith("/app/landlord/tenancies")) return "Tenancies";
-  if (pathname.startsWith("/app/landlord/renters")) return "Invite renter";
-  if (pathname.startsWith("/app/landlord/applications")) return "Rental applications";
-  if (pathname.startsWith("/app/landlord/payments")) return "Rent payment review";
-  if (pathname.startsWith("/app/landlord")) return "Landlord rental";
+  if (pathname.startsWith("/app/landlord/staff")) return "Staff";
+  if (pathname.startsWith("/app/landlord/tenancies")) return "Tenancies & Rent";
+  if (pathname.startsWith("/app/landlord/renters")) return "Tenancies & Rent";
+  if (pathname.startsWith("/app/landlord/applications")) return "Applications";
+  if (pathname.startsWith("/app/landlord/payments")) return "Tenancies & Rent";
+  if (pathname.startsWith("/app/landlord")) return "Overview";
   if (pathname.startsWith("/app/renter/browse")) return "Browse listings";
   if (pathname.startsWith("/app/renter/payments")) return "Rent payments";
-  if (pathname.startsWith("/app/renter")) return "Renter workspace";
+  if (pathname.startsWith("/app/renter")) return "Overview";
   const waterTitle = utilityPageTitle(pathname, "water");
   if (waterTitle) return waterTitle;
   const electricityTitle = utilityPageTitle(pathname, "electricity");
@@ -153,7 +156,7 @@ export function AppShell() {
     }
   };
 
-  const navClass = ({ isActive }: { isActive: boolean }) =>
+  const navClass = (isActive: boolean) =>
     cn(
       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white",
       isActive &&
@@ -212,18 +215,22 @@ export function AppShell() {
                 {group.section}
               </p>
             ) : null}
-            {group.items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={`${item.to}${tenantSearch}`}
-                end={navLinkUsesExactEnd(item.to)}
-                className={navClass}
-                onClick={() => setMobileNavOpen(false)}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ))}
+            {group.items.map((item) => {
+              const active = navItemIsActive(item, location.pathname);
+              return (
+                <NavLink
+                  key={item.to}
+                  to={`${item.to}${tenantSearch}`}
+                  end={navLinkUsesExactEnd(item.to) && !item.activePrefixes?.length}
+                  aria-current={active ? "page" : undefined}
+                  className={() => navClass(active)}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
           </div>
         ))}
       </nav>
@@ -232,16 +239,20 @@ export function AppShell() {
         {showBranding && (
           <NavLink
             to={`/app/branding${tenantSearch}`}
-            className={navClass}
+            className={() =>
+              navClass(navItemIsActive({ to: "/app/branding", label: "Company Settings", icon: Settings }, location.pathname))
+            }
             onClick={() => setMobileNavOpen(false)}
           >
-            <Palette className="h-4 w-4 shrink-0" />
-            Branding
+            <Settings className="h-4 w-4 shrink-0" />
+            Company Settings
           </NavLink>
         )}
         <NavLink
           to={`/app/account${tenantSearch}`}
-          className={navClass}
+          className={() =>
+            navClass(navItemIsActive({ to: "/app/account", label: "Account", icon: UserRound }, location.pathname))
+          }
           onClick={() => setMobileNavOpen(false)}
         >
           <UserRound className="h-4 w-4 shrink-0" />
@@ -317,7 +328,7 @@ export function AppShell() {
                 {isSuperAdmin
                   ? "Secure tenant provisioning & audit oversight"
                   : activeMembership
-                    ? `${activeMembership.tenant.name} · isolated tenant`
+                    ? `${tenantDisplay || activeMembership.tenant.name} · isolated tenant`
                     : "Role-aware workspace"}
               </p>
             </div>
@@ -386,8 +397,10 @@ export function AppShell() {
             </Link>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(ellipse_at_top,_rgba(43,140,255,0.04),_transparent_55%)] p-4 sm:p-5 dark:bg-[radial-gradient(ellipse_at_top,_rgba(43,140,255,0.06),_transparent_50%)]">
-          <Outlet />
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[radial-gradient(ellipse_at_top,_rgba(43,140,255,0.04),_transparent_55%)] p-4 sm:p-6 dark:bg-[radial-gradient(ellipse_at_top,_rgba(43,140,255,0.06),_transparent_50%)]">
+          <div className="mx-auto w-full max-w-6xl">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

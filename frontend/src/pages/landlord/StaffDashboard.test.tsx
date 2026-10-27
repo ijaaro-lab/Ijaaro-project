@@ -62,13 +62,13 @@ describe("StaffDashboard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Welcome, Sam Staff/i)).toBeInTheDocument();
+      expect(screen.getByText("Unit A")).toBeInTheDocument();
     });
     expect(screen.getByRole("link", { name: /Create property/i })).toHaveAttribute(
       "href",
       "/app/landlord/properties/new",
     );
-    expect(screen.getByText("Unit A")).toBeInTheDocument();
+    expect(screen.getByText("Properties")).toBeInTheDocument();
     expect(screen.getAllByText("Published").length).toBeGreaterThan(0);
   });
 

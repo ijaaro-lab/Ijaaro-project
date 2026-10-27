@@ -7,12 +7,12 @@ import {
   Search,
   Users,
   XCircle,
-  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MetricCard, MetricRow } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
 import { statusTone } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,6 @@ import type { LandlordRentalApplicationRow, RentalApplicationStatus } from "@/ty
 
 type StatusFilter = RentalApplicationStatus | "all";
 type SortKey = "newest" | "oldest";
-type StatAccent = "blue" | "green" | "orange" | "purple";
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: "pending", label: "Pending" },
@@ -29,44 +28,6 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: "rejected", label: "Rejected" },
   { id: "all", label: "All" },
 ];
-
-const STAT_ACCENTS: Record<StatAccent, string> = {
-  blue: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
-  green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
-  orange: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300",
-  purple: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-};
-
-function StatCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  hint: string;
-  icon: LucideIcon;
-  accent: StatAccent;
-}) {
-  return (
-    <div className="rounded-2xl border border-sky-100/90 bg-card px-4 py-4 shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:border-border/80 dark:shadow-none">
-      <div className="flex items-start gap-3">
-        <div className={cn("shrink-0 rounded-xl p-2.5", STAT_ACCENTS[accent])}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
-          <div className="mt-1 truncate font-display text-2xl font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-[1.75rem]">
-            {value}
-          </div>
-          <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{hint}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function emptyCopy(filter: StatusFilter): { title: string; body: string } {
   switch (filter) {
@@ -222,22 +183,24 @@ export function ApplicationsPage() {
   const empty = emptyCopy(filter);
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 max-w-2xl">
-          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Rental applications
+          <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+            Landlord · Applications
+          </p>
+          <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Applications
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]">
-            Review renter requests for this landlord workspace. Accept activates renter membership
-            only; assign properties separately.
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Review renter requests. Accept activates membership; assign properties separately.
           </p>
         </div>
 
         <div
           role="tablist"
           aria-label="Filter applications by status"
-          className="flex w-full shrink-0 gap-1 overflow-x-auto rounded-xl border border-border/80 bg-card p-1 shadow-[0_1px_3px_rgba(11,31,58,0.04)] sm:w-auto dark:shadow-none"
+          className="flex w-full shrink-0 gap-1 overflow-x-auto rounded-xl border border-border/80 bg-card p-1 sm:w-auto dark:border-border"
         >
           {STATUS_TABS.map((tab) => {
             const selected = filter === tab.id;
@@ -285,40 +248,16 @@ export function ApplicationsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Pending"
-          value={stats.pending}
-          hint="Awaiting review"
-          icon={Clock3}
-          accent="blue"
-        />
-        <StatCard
-          label="Accepted"
-          value={stats.accepted}
-          hint="Renter memberships activated"
-          icon={CheckCircle2}
-          accent="green"
-        />
-        <StatCard
-          label="Rejected"
-          value={stats.rejected}
-          hint="Not approved"
-          icon={XCircle}
-          accent="orange"
-        />
-        <StatCard
-          label="All applications"
-          value={stats.all}
-          hint="Total applications"
-          icon={Users}
-          accent="purple"
-        />
-      </div>
+      <MetricRow>
+        <MetricCard compact label="Pending" value={stats.pending} icon={Clock3} accent="warning" />
+        <MetricCard compact label="Accepted" value={stats.accepted} icon={CheckCircle2} accent="green" />
+        <MetricCard compact label="Rejected" value={stats.rejected} icon={XCircle} accent="warning" />
+        <MetricCard compact label="All" value={stats.all} icon={Users} accent="navy" />
+      </MetricRow>
 
       <section
         aria-label="Application queue"
-        className="overflow-hidden rounded-2xl border border-sky-100/90 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:border-border/80 dark:shadow-none"
+        className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-border dark:shadow-none"
       >
         <div className="border-b border-border/80 px-4 py-3.5 sm:px-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

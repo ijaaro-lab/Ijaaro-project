@@ -148,15 +148,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Keep this callback synchronous. Awaiting Supabase auth/DB calls here can
     // deadlock the auth client and make a later getSession() return null
-    // (see supabase/auth-js#762). Defer profile/membership loads.
+    // (see supabase/auth-js#762). Defer profile/membership loads — but keep
+    // `loading` true until they finish so RoleRoute does not flash Unauthorized.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       commitSession(next);
       if (next?.user) {
         const userId = next.user.id;
+        setLoading(true);
         window.setTimeout(() => {
           if (!mounted) return;
-          void Promise.all([loadProfile(userId), refreshMemberships(userId)]);
+          void Promise.all([loadProfile(userId), refreshMemberships(userId)]).finally(() => {
+            if (mounted) setLoading(false);
+          });
         }, 0);
+        return;
       }
       setLoading(false);
     });

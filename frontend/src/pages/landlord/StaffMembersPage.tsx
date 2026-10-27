@@ -8,13 +8,13 @@ import {
   UserPlus,
   UserX,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MetricCard, MetricRow } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
 import {
   validateLinkStaffByEmailInput,
@@ -36,52 +36,8 @@ type StaffRow = {
 };
 
 type StatusFilter = "all" | "active" | "disabled";
-type StatAccent = "navy" | "green" | "red" | "purple";
-
-const STAT_ACCENTS: Record<StatAccent, string> = {
-  navy: "bg-brand-navy/10 text-brand-navy dark:bg-brand-blue/20 dark:text-brand-water",
-  green: "bg-brand-green/10 text-brand-green dark:bg-brand-green/20 dark:text-brand-green",
-  red: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
-  purple: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-};
 
 const STAFF_ROLE_LABEL = "landlord_staff";
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-  valueTitle,
-}: {
-  label: string;
-  value: string | number;
-  icon: LucideIcon;
-  accent: StatAccent;
-  valueTitle?: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/80 bg-card px-4 py-3.5 shadow-[0_2px_8px_rgba(11,31,58,0.05)] transition-shadow hover:shadow-[0_4px_14px_rgba(11,31,58,0.08)] dark:shadow-none dark:hover:shadow-none">
-      <div className="flex items-center gap-3">
-        <div className={cn("shrink-0 rounded-xl p-2.5", STAT_ACCENTS[accent])}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
-          <div
-            className={cn(
-              "mt-0.5 truncate font-display font-bold leading-none tracking-tight text-foreground",
-              typeof value === "number" ? "text-2xl tabular-nums" : "text-sm sm:text-base",
-            )}
-            title={valueTitle}
-          >
-            {value}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function initialsFromName(name: string | null, email: string | null): string {
   const source = (name || email || "?").trim();
@@ -405,25 +361,26 @@ export function StaffMembersPage() {
     );
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-5">
       <div className="min-w-0">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
-          Staff management
+        <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+          Landlord · Team
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Staff
         </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
           Add property managers on{" "}
           <span className="font-medium text-foreground">{activeMembership.tenant.name}</span>. Staff
           can create and publish listings; they cannot delete properties or manage tenancies,
-          payments, or memberships. You can only grant the{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">{STAFF_ROLE_LABEL}</code>{" "}
-          role here.
+          payments, or memberships.
         </p>
       </div>
 
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}
         </div>
@@ -431,24 +388,18 @@ export function StaffMembersPage() {
       {message && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
         >
           {message}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Staff" value={stats.total} icon={Users} accent="navy" />
-        <StatCard label="Active Staff" value={stats.active} icon={UserCheck} accent="green" />
-        <StatCard label="Disabled Staff" value={stats.disabled} icon={UserX} accent="red" />
-        <StatCard
-          label="Role Assigned"
-          value={STAFF_ROLE_LABEL}
-          icon={Shield}
-          accent="purple"
-          valueTitle={STAFF_ROLE_LABEL}
-        />
-      </div>
+      <MetricRow>
+        <MetricCard compact label="Total staff" value={stats.total} icon={Users} accent="navy" />
+        <MetricCard compact label="Active" value={stats.active} icon={UserCheck} accent="green" />
+        <MetricCard compact label="Disabled" value={stats.disabled} icon={UserX} accent="warning" />
+        <MetricCard compact label="Role" value="Staff" icon={Shield} accent="water" />
+      </MetricRow>
 
       <section className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:shadow-none">
         <div className="border-b border-border/80 px-4 py-3.5 sm:px-5">

@@ -5,6 +5,7 @@ import {
   RoleRoute,
   SuperAdminRoute,
   activeMembershipAllowsRoute,
+  isWorkspaceSwitchPending,
 } from "./ProtectedRoute";
 import type { MembershipWithTenant } from "./AuthProvider";
 import type { AppRole, TenantType } from "@/types/database";
@@ -21,9 +22,11 @@ function mem(partial: {
   status?: "active" | "disabled" | "invited";
   tenantType?: TenantType;
   tenantId?: string;
+  slug?: string;
 }): MembershipWithTenant {
   const tenantType = partial.tenantType ?? "landlord";
   const tenantId = partial.tenantId ?? `tenant-${partial.id}`;
+  const slug = partial.slug ?? `slug-${partial.id}`;
   return {
     id: partial.id,
     tenant_id: tenantId,
@@ -37,8 +40,8 @@ function mem(partial: {
     tenant: {
       id: tenantId,
       name: `Tenant ${partial.id}`,
-      slug: `slug-${partial.id}`,
-      subdomain: `slug-${partial.id}`,
+      slug,
+      subdomain: slug,
       tenant_type: tenantType,
       status: "active",
       branding: {},
@@ -265,6 +268,83 @@ describe("RoleRoute (active membership)", () => {
     );
     expect(screen.getByText("Super admin console")).toBeTruthy();
     expect(screen.queryByText("Allowed content")).toBeNull();
+  });
+
+  it("shows loading while ?tenant= membership is not active yet", () => {
+    const water = mem({
+      id: "water",
+      role: "utility_admin",
+      tenantType: "water_company",
+      slug: "daruslaam-water",
+    });
+    const landlord = mem({
+      id: "ll",
+      role: "landlord_admin",
+      tenantType: "landlord",
+      slug: "some-landlord",
+    });
+    useAuth.mockReturnValue({
+      loading: false,
+      isSuperAdmin: false,
+      activeMembership: landlord,
+      memberships: [landlord, water],
+    });
+    renderRoleRoute(
+      ["utility_admin", "utility_staff", "utility_customer"],
+      "/app/water/reports?tenant=daruslaam-water",
+      "Water company tools require an active membership on a water workspace.",
+      ["water_company"],
+    );
+    expect(screen.getByText(/^Loading/i)).toBeTruthy();
+    expect(screen.queryByText(/unauthorized/i)).toBeNull();
+    expect(screen.queryByText("Allowed content")).toBeNull();
+  });
+
+  it("shows loading while auth memberships are still resolving", () => {
+    useAuth.mockReturnValue({
+      loading: true,
+      isSuperAdmin: false,
+      activeMembership: null,
+      memberships: [],
+    });
+    renderRoleRoute(
+      ["utility_admin", "utility_staff", "utility_customer"],
+      "/app/water/reports?tenant=daruslaam-water",
+      "Water company tools require an active membership on a water workspace.",
+      ["water_company"],
+    );
+    expect(screen.getByText(/^Loading/i)).toBeTruthy();
+    expect(screen.queryByText(/unauthorized/i)).toBeNull();
+  });
+});
+
+describe("isWorkspaceSwitchPending", () => {
+  it("is true when URL slug matches a membership that is not active", () => {
+    const water = mem({
+      id: "water",
+      role: "utility_admin",
+      tenantType: "water_company",
+      slug: "daruslaam-water",
+    });
+    const landlord = mem({ id: "ll", role: "landlord_admin", slug: "other" });
+    expect(isWorkspaceSwitchPending([landlord, water], landlord, "daruslaam-water")).toBe(
+      true,
+    );
+  });
+
+  it("is false when active membership already matches the slug", () => {
+    const water = mem({
+      id: "water",
+      role: "utility_admin",
+      tenantType: "water_company",
+      slug: "daruslaam-water",
+    });
+    expect(isWorkspaceSwitchPending([water], water, "daruslaam-water")).toBe(false);
+  });
+
+  it("is false when slug has no matching membership", () => {
+    const landlord = mem({ id: "ll", role: "landlord_admin", slug: "other" });
+    expect(isWorkspaceSwitchPending([landlord], landlord, "daruslaam-water")).toBe(false);
   });
 });
 

@@ -6,11 +6,10 @@ import {
   CreditCard,
   Droplets,
   FileText,
-  Gauge,
   Home,
   LayoutDashboard,
-  Palette,
   Search,
+  Settings,
   Shield,
   UserRound,
   Users,
@@ -25,6 +24,8 @@ export type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   section?: string;
+  /** When set, NavLink is active if pathname matches any prefix (or exact `to`). */
+  activePrefixes?: string[];
 };
 
 const UTILITY_KIND_TENANT_TYPE: Record<UtilityKind, string> = {
@@ -32,27 +33,41 @@ const UTILITY_KIND_TENANT_TYPE: Record<UtilityKind, string> = {
   electricity: "electricity_company",
 };
 
-function utilityStaffNav(kind: UtilityKind): NavItem[] {
+function utilityFinancePrefixes(kind: UtilityKind): string[] {
   const base = `/app/${kind}`;
-  const label = kind === "water" ? "Water" : "Electricity";
-  const Icon = kind === "water" ? Droplets : Zap;
   return [
-    { to: base, label: `${label} dashboard`, icon: Icon },
-    { to: `${base}/customers`, label: "Customers", icon: Users },
-    { to: `${base}/meters`, label: "Meters", icon: Gauge },
-    { to: `${base}/readings`, label: "Readings", icon: ClipboardList },
-    { to: `${base}/bills`, label: "Bills", icon: FileText },
-    { to: `${base}/payments`, label: "Payments", icon: CreditCard },
-    { to: `${base}/reports`, label: "Reports", icon: BarChart3 },
+    `${base}/finance`,
+    `${base}/bills`,
+    `${base}/payments`,
+    `${base}/meters`,
+    `${base}/readings`,
+    `${base}/reports`,
   ];
+}
+
+function utilityStaffNav(kind: UtilityKind, isAdmin: boolean): NavItem[] {
+  const base = `/app/${kind}`;
+  const items: NavItem[] = [
+    { to: base, label: "Overview", icon: LayoutDashboard },
+    { to: `${base}/customers`, label: "Customers", icon: Users },
+    {
+      to: `${base}/finance`,
+      label: "Finance & Payments",
+      icon: CreditCard,
+      activePrefixes: utilityFinancePrefixes(kind),
+    },
+  ];
+  if (isAdmin) {
+    items.push({ to: `${base}/staff`, label: "Staff", icon: Users });
+  }
+  return items;
 }
 
 function utilityCustomerNav(kind: UtilityKind): NavItem[] {
   const base = `/app/${kind}`;
-  const label = kind === "water" ? "Water" : "Electricity";
   const Icon = kind === "water" ? Droplets : Zap;
   return [
-    { to: base, label: `${label} dashboard`, icon: Icon },
+    { to: base, label: "Overview", icon: Icon },
     { to: `${base}/my-bills`, label: "My bills", icon: FileText },
     { to: `${base}/my-payments`, label: "My payments", icon: CreditCard },
   ];
@@ -69,8 +84,11 @@ export function utilityNavForActiveMembership(
   );
   if (!kind) return [];
 
-  if (active.role === "utility_admin" || active.role === "utility_staff") {
-    return utilityStaffNav(kind);
+  if (active.role === "utility_admin") {
+    return utilityStaffNav(kind, true);
+  }
+  if (active.role === "utility_staff") {
+    return utilityStaffNav(kind, false);
   }
   if (active.role === "utility_customer") {
     return utilityCustomerNav(kind);
@@ -78,7 +96,7 @@ export function utilityNavForActiveMembership(
   return [];
 }
 
-/** Branding is admin-only for the active landlord / utility workspace. */
+/** Company settings (branding) is admin-only for the active landlord / utility workspace. */
 export function canShowBrandingNav(
   active: MembershipWithTenant | null | undefined,
 ): boolean {
@@ -106,6 +124,19 @@ export function navLinkUsesExactEnd(to: string): boolean {
     to === "/app/water" ||
     to === "/app/electricity"
   );
+}
+
+/** Whether a nav item should appear active for the current pathname. */
+export function navItemIsActive(item: NavItem, pathname: string): boolean {
+  if (item.activePrefixes?.length) {
+    return item.activePrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+  }
+  if (navLinkUsesExactEnd(item.to)) {
+    return pathname === item.to || pathname === `${item.to}/`;
+  }
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
 /**
@@ -151,38 +182,52 @@ export function navForRole(
     ];
   }
 
-  const items: NavItem[] = [{ to: "/app", label: "Overview", icon: LayoutDashboard }];
+  const items: NavItem[] = [];
 
   if (role === "landlord_staff") {
     items.push(
-      { to: "/app/landlord", label: "Dashboard", icon: Home },
+      { to: "/app/landlord", label: "Overview", icon: Home },
       { to: "/app/landlord/properties", label: "Properties", icon: Building2 },
     );
-  }
-  if (role === "landlord_admin") {
-    // Staff sits after Properties so it stays above the fold on short sidebars.
+  } else if (role === "landlord_admin") {
     items.push(
-      { to: "/app/landlord", label: "Dashboard", icon: Home },
+      { to: "/app/landlord", label: "Overview", icon: Home },
       { to: "/app/landlord/properties", label: "Properties", icon: Building2 },
-      { to: "/app/landlord/staff", label: "Staff", icon: Users },
-      { to: "/app/landlord/tenancies", label: "Tenancies", icon: ClipboardList },
-      { to: "/app/landlord/renters", label: "Invite renter", icon: Users },
       { to: "/app/landlord/applications", label: "Applications", icon: ClipboardList },
-      { to: "/app/landlord/payments", label: "Rent review", icon: CreditCard },
+      {
+        to: "/app/landlord/tenancies",
+        label: "Tenancies & Rent",
+        icon: CreditCard,
+        activePrefixes: [
+          "/app/landlord/tenancies",
+          "/app/landlord/payments",
+          "/app/landlord/renters",
+        ],
+      },
+      { to: "/app/landlord/staff", label: "Staff", icon: Users },
     );
-  }
-  if (role === "renter") {
+  } else if (role === "renter") {
     items.push(
-      { to: "/app/renter", label: "Dashboard", icon: UserRound },
+      { to: "/app/renter", label: "Overview", icon: UserRound },
       { to: "/app/renter/browse", label: "Browse", icon: Search },
       { to: "/app/renter/payments", label: "Payments", icon: CreditCard },
     );
+  } else if (
+    role !== "utility_admin" &&
+    role !== "utility_staff" &&
+    role !== "utility_customer"
+  ) {
+    items.push({ to: "/app", label: "Overview", icon: LayoutDashboard });
   }
 
   items.push(...utilityNavForActiveMembership(activeMembership));
 
   if (canShowBrandingNav(activeMembership)) {
-    items.push({ to: "/app/branding", label: "Branding", icon: Palette });
+    items.push({
+      to: "/app/branding",
+      label: "Company Settings",
+      icon: Settings,
+    });
   }
 
   items.push({ to: "/app/account", label: "Account", icon: UserRound });

@@ -19,6 +19,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MetricCard, MetricRow } from "@/components/ui/metric-card";
 import { Select } from "@/components/ui/select";
 import { money, statusTone } from "@/lib/format";
 import { propertyLabel, renterLabel } from "@/lib/tenancyDisplay";
@@ -33,7 +34,6 @@ type PropertyRow = { id: string; name: string | null; address_line: string };
 type RenterRow = { user_id: string; full_name: string | null; email: string | null };
 type PhotoRow = { property_id: string; storage_path: string; sort_order: number };
 type StatusFilter = PaymentStatus | "all";
-type StatAccent = "blue" | "green" | "red" | "purple";
 
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -46,13 +46,6 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "refunded", label: "Refunded" },
 ];
 
-const STAT_ACCENTS: Record<StatAccent, string> = {
-  blue: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
-  green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
-  red: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
-  purple: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-};
-
 const STATUS_DOT: Record<string, string> = {
   success: "bg-emerald-500",
   warning: "bg-amber-500",
@@ -60,37 +53,6 @@ const STATUS_DOT: Record<string, string> = {
   danger: "bg-red-500",
   neutral: "bg-slate-400",
 };
-
-function StatCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: number;
-  hint: string;
-  icon: LucideIcon;
-  accent: StatAccent;
-}) {
-  return (
-    <div className="rounded-2xl border border-sky-100/90 bg-card px-4 py-4 shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:border-border/80 dark:shadow-none">
-      <div className="flex items-start gap-3">
-        <div className={cn("shrink-0 rounded-xl p-2.5", STAT_ACCENTS[accent])}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
-          <div className="mt-1 truncate font-display text-2xl font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-[1.75rem]">
-            {value}
-          </div>
-          <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{hint}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PropertyThumb({
   storagePath,
@@ -131,7 +93,7 @@ function PropertyThumb({
     const showLabel = !storagePath || failed;
     return (
       <div
-        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:h-[4.5rem] sm:w-[4.5rem]"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
         role="img"
         aria-label={showLabel ? "No property photo" : "Loading property photo"}
       >
@@ -144,7 +106,7 @@ function PropertyThumb({
     <img
       src={url}
       alt={alt}
-      className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-[4.5rem] sm:w-[4.5rem]"
+      className="h-12 w-12 shrink-0 rounded-xl object-cover"
     />
   );
 }
@@ -160,16 +122,11 @@ function propertyLocation(property: PropertyRow | undefined): string {
 
 function formatSubmittedAt(iso: string): string {
   const d = new Date(iso);
-  const datePart = d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-  const timePart = d.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${datePart} · ${timePart}`;
 }
 
 function MetaCell({
@@ -182,12 +139,14 @@ function MetaCell({
   value: string;
 }) {
   return (
-    <div className="min-w-0">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span>{label}</span>
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+        <span className="truncate">{label}</span>
       </div>
-      <div className="mt-1 truncate text-sm font-medium text-foreground">{value}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-foreground" title={value}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -336,16 +295,26 @@ export function PaymentsReviewPage() {
 
   const stats = useMemo(() => {
     let pending = 0;
+    let pendingAmount = 0;
     let approved = 0;
+    let collected = 0;
     let rejected = 0;
     for (const p of rows) {
-      if (p.status === "pending") pending += 1;
-      else if (p.status === "paid") approved += 1;
-      else if (p.status === "rejected") rejected += 1;
+      if (p.status === "pending") {
+        pending += 1;
+        pendingAmount += Number(p.amount);
+      } else if (p.status === "paid") {
+        approved += 1;
+        collected += Number(p.amount);
+      } else if (p.status === "rejected") {
+        rejected += 1;
+      }
     }
     return {
       pending,
+      pendingAmount,
       approved,
+      collected,
       rejected,
       total: rows.length,
     };
@@ -376,19 +345,22 @@ export function PaymentsReviewPage() {
     (searchQuery.trim() !== "" || statusFilter !== "all");
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-5">
       <div className="min-w-0">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">
-          Rent payment review
+        <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-green">
+          Landlord · Tenancies & Rent
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Rent review
         </h2>
-        <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Review renter payment submissions and verify proof before making a decision. Approval does
-          not prove funds were received outside the platform.
+        <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">
+          Review payment proofs before approving. Approval does not prove funds were received
+          outside the platform.
         </p>
       </div>
 
       {!canApprove && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
           Your role can view payments, but approve/reject requires landlord_admin or staff with
           approve_rent permission.
         </div>
@@ -397,65 +369,58 @@ export function PaymentsReviewPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         >
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Pending review"
-          value={stats.pending}
-          hint="Awaiting your review."
-          icon={Clock3}
-          accent="blue"
-        />
-        <StatCard
-          label="Approved"
-          value={stats.approved}
-          hint="Payments verified."
-          icon={CheckCircle2}
-          accent="green"
-        />
-        <StatCard
-          label="Rejected"
-          value={stats.rejected}
-          hint="Not approved."
-          icon={XCircle}
-          accent="red"
-        />
-        <StatCard
-          label="Total submissions"
-          value={stats.total}
-          hint="All rent payment uploads."
-          icon={Users}
-          accent="purple"
-        />
+      <div className="rounded-2xl border border-brand-green/35 bg-card p-3 dark:border-brand-green/40 sm:p-4">
+        <MetricRow>
+          <MetricCard
+            compact
+            label="Collected"
+            value={money(stats.collected)}
+            hint={`${stats.approved} approved`}
+            icon={CheckCircle2}
+            accent="green"
+          />
+          <MetricCard
+            compact
+            label="Awaiting review"
+            value={money(stats.pendingAmount)}
+            hint={`${stats.pending} pending`}
+            icon={Clock3}
+            accent="warning"
+          />
+          <MetricCard
+            compact
+            label="Rejected"
+            value={stats.rejected}
+            icon={XCircle}
+            accent="warning"
+          />
+          <MetricCard compact label="Total" value={stats.total} icon={Users} accent="navy" />
+        </MetricRow>
       </div>
 
       <section
         aria-label="Payment submissions"
-        className="overflow-hidden rounded-2xl border border-sky-100/90 bg-card shadow-[0_2px_8px_rgba(11,31,58,0.05)] dark:border-border/80 dark:shadow-none"
+        className="overflow-hidden rounded-2xl border border-brand-green/35 bg-card shadow-[0_1px_2px_rgba(11,31,58,0.04)] dark:border-brand-green/40 dark:shadow-none"
       >
-        <div className="border-b border-border/80 px-4 py-3.5 sm:px-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
-                <ClipboardList className="h-4 w-4" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-display text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                  Payment submissions
-                </h3>
-                <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-                  Renter payment proofs for this landlord workspace.
-                </p>
-              </div>
+        <div className="border-b border-border px-4 py-3.5 sm:px-5">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-display text-base font-semibold text-foreground">
+                Billing & payments status
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Search, filter, view proof, and record approval
+              </p>
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
-              <label className="relative block min-w-0 flex-1 lg:w-80">
+              <label className="relative block min-w-0 flex-1 lg:w-72">
                 <span className="sr-only">Search payment submissions</span>
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -466,7 +431,7 @@ export function PaymentsReviewPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search renter, property, or reference"
-                  className="h-10 pl-9"
+                  className="h-9 pl-9"
                 />
               </label>
               <div className="relative sm:w-44">
@@ -478,7 +443,7 @@ export function PaymentsReviewPage() {
                   aria-label="Filter by status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                  className="h-10 pl-9"
+                  className="h-9 pl-9"
                 >
                   {STATUS_FILTER_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -505,46 +470,50 @@ export function PaymentsReviewPage() {
             return (
               <article
                 key={p.id}
-                className="rounded-xl border border-sky-100/90 bg-card p-4 shadow-[0_1px_3px_rgba(11,31,58,0.04)] sm:p-5 dark:border-border/80 dark:shadow-none"
+                className="overflow-x-auto rounded-2xl border border-border/80 bg-card dark:border-border"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-3.5">
-                      <PropertyThumb storagePath={photoPath} alt={propName} />
-                      <div className="min-w-0">
-                        <div className="font-display text-base font-semibold text-foreground">
-                          {renterLabel(renter)}
-                        </div>
-                        <div className="mt-0.5 text-sm leading-snug text-muted-foreground">
-                          {location}
-                        </div>
+                <div className="flex min-w-[52rem] flex-nowrap items-center gap-4 px-4 py-3.5 sm:min-w-0 sm:gap-5 sm:px-5">
+                  <div className="flex w-[13.5rem] shrink-0 items-center gap-3 sm:w-[15rem]">
+                    <PropertyThumb storagePath={photoPath} alt={propName} />
+                    <div className="min-w-0">
+                      <div className="truncate font-display text-sm font-semibold text-foreground">
+                        {renterLabel(renter)}
                       </div>
-                    </div>
-
-                    <div className="grid min-w-0 flex-1 grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:pl-2">
-                      <MetaCell
-                        icon={Banknote}
-                        label="Amount"
-                        value={money(p.amount, p.currency)}
-                      />
-                      <MetaCell icon={Smartphone} label="Method" value={methodLabel} />
-                      <MetaCell
-                        icon={FileText}
-                        label="Reference"
-                        value={p.reference?.trim() || "—"}
-                      />
-                      <MetaCell
-                        icon={Calendar}
-                        label="Submitted"
-                        value={formatSubmittedAt(p.submitted_at)}
-                      />
+                      <div
+                        className="mt-0.5 truncate text-xs text-muted-foreground"
+                        title={location}
+                      >
+                        {location}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end lg:flex-col lg:items-end xl:flex-row xl:items-center">
+                  <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-4 border-x border-border/70 px-4">
+                    <MetaCell
+                      icon={Banknote}
+                      label="Amount"
+                      value={money(p.amount, p.currency)}
+                    />
+                    <MetaCell icon={Smartphone} label="Method" value={methodLabel} />
+                    <MetaCell
+                      icon={FileText}
+                      label="Reference"
+                      value={p.reference?.trim() || "—"}
+                    />
+                    <MetaCell
+                      icon={Calendar}
+                      label="Submitted"
+                      value={formatSubmittedAt(p.submitted_at)}
+                    />
+                  </div>
+
+                  <div className="flex shrink-0 flex-nowrap items-center gap-2">
                     <Badge tone={tone} className="capitalize gap-1.5">
                       <span
-                        className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[tone] ?? STATUS_DOT.neutral)}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          STATUS_DOT[tone] ?? STATUS_DOT.neutral,
+                        )}
                         aria-hidden
                       />
                       {p.status}
@@ -557,9 +526,9 @@ export function PaymentsReviewPage() {
                         disabled={proofBusyId === p.id}
                         onClick={() => void openProof(p)}
                         aria-label="View payment proof"
-                        className="min-h-9 border-sky-300 text-brand-blue hover:bg-sky-50 dark:border-sky-500/40 dark:text-sky-300 dark:hover:bg-sky-500/15"
+                        className="h-8 whitespace-nowrap px-2.5"
                       >
-                        <Eye className="h-4 w-4" aria-hidden />
+                        <Eye className="h-3.5 w-3.5" aria-hidden />
                         {proofBusyId === p.id ? "Opening…" : "View proof"}
                       </Button>
                     )}
