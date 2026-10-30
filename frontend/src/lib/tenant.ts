@@ -56,16 +56,23 @@ export function inferTenantBaseFromHost(hostname: string): string | null {
   return parts.slice(1).join(".");
 }
 
+/** Canonical IJAARO apex used when env/host inference is unavailable. */
+export const PRODUCTION_TENANT_BASE_DOMAIN = "ijaaro.online";
+
 /**
  * Production SaaS base domain, e.g. `ijaaro.online` → `slug.ijaaro.online`.
- * Prefers `VITE_TENANT_BASE_DOMAIN`, then infers from the live hostname.
+ * Prefers `VITE_TENANT_BASE_DOMAIN`, then live host inference, then prod default.
  */
 export function tenantBaseDomain(
   hostname: string = typeof window !== "undefined" ? window.location.hostname : "",
 ): string | null {
   const raw = (import.meta.env.VITE_TENANT_BASE_DOMAIN as string | undefined)?.trim();
   if (raw) return raw;
-  return hostname ? inferTenantBaseFromHost(hostname) : null;
+  const inferred = hostname ? inferTenantBaseFromHost(hostname) : null;
+  if (inferred) return inferred;
+  // Production builds must never fall back to ?tenant= for workspace URLs.
+  if (import.meta.env.PROD) return PRODUCTION_TENANT_BASE_DOMAIN;
+  return null;
 }
 
 /** Relative workspace entry: `/?tenant=hankaal` */

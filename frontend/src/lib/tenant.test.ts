@@ -64,4 +64,19 @@ describe("tenantWorkspaceUrl / labels with live host", () => {
       "hodan-properties.ijaaro.online",
     );
   });
+
+  it("builds slug.ijaaro.online on vercel.app hosts via prod default", () => {
+    vi.stubGlobal("window", {
+      location: {
+        hostname: "ijaaro-project.vercel.app",
+        protocol: "https:",
+        port: "",
+        origin: "https://ijaaro-project.vercel.app",
+      },
+    });
+    vi.stubEnv("PROD", true);
+
+    // Managed preview host cannot be inferred; production default still wins.
+    expect(tenantWorkspaceUrl("mcc")).toMatch(/mcc\.ijaaro\.online$/);
+  });
 });

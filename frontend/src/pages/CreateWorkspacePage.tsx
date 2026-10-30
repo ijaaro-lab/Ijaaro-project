@@ -338,7 +338,8 @@ export function CreateWorkspacePage() {
     }
 
     await refreshMemberships();
-    const subdomain = tenant.subdomain || tenant.slug;
+    const subdomain = (tenant.subdomain || tenant.slug || finalSlug).trim().toLowerCase();
+    // Always open the real DNS portal (slug.ijaaro.online), never ?tenant=.
     const workspaceUrl = tenantWorkspaceUrl(subdomain);
     setResult({
       tenant,
@@ -351,7 +352,6 @@ export function CreateWorkspacePage() {
       /* ignore */
     }
     setStep(4);
-    // Open the public tenant landing (subdomain portal) — not the dashboard.
     window.location.assign(workspaceUrl);
   };
 
