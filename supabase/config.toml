@@ -38,3 +38,7 @@ verify_jwt = true
 # Dashboard / external cron should not rely on end-user JWTs.
 [functions.generate-monthly-rent-charges]
 verify_jwt = false
+
+# Welcome email: end-user JWT required (sends only to the authenticated address).
+[functions.send-welcome-email]
+verify_jwt = true

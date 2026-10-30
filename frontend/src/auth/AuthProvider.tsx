@@ -244,6 +244,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Supabase returns a user with empty identities when email confirmation is required
     // and the address was already registered (anti-enumeration). Treat missing session as confirmation pending.
     const needsConfirmation = !data.session;
+    // Best-effort Resend welcome (JWT required — only when signup returns a session).
+    if (data.session) {
+      void supabase.functions.invoke("send-welcome-email", {
+        body: {
+          full_name: fullName,
+          workspace_url: window.location.origin,
+        },
+      });
+    }
     return { error: null, needsConfirmation };
   };
 

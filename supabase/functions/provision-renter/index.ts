@@ -11,6 +11,7 @@ import {
   sanitizeLandlordResponse,
   validateProvisionInput,
 } from "./logic.ts";
+import { sendWelcomeEmail } from "../_shared/welcomeEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -370,6 +371,12 @@ Deno.serve(async (req) => {
     }
 
     createdUserId = null; // success — do not compensate
+
+    void sendWelcomeEmail({
+      to: email,
+      fullName,
+      workspaceUrl: siteUrl || null,
+    });
 
     const safe = sanitizeLandlordResponse({
       ok: true,

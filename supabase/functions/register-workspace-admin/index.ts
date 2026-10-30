@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { sendWelcomeEmail } from "../_shared/welcomeEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +64,8 @@ Deno.serve(async (req) => {
         full_name: fullName,
         email,
       });
+      // Best-effort; never block onboarding on mail failure.
+      void sendWelcomeEmail({ to: email, fullName });
       return json({ ok: true, user_id: created.user.id, created: true }, 200);
     }
 
