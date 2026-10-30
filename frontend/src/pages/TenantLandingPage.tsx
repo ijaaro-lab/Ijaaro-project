@@ -21,7 +21,11 @@ import {
 } from "@/lib/landingTemplates";
 import { supabase } from "@/lib/supabase";
 import { scrollToHashTarget } from "@/lib/scrollToHashTarget";
-import { platformHomeUrl, resolveTenantKeyFromLocation } from "@/lib/tenant";
+import {
+  platformHomeUrl,
+  resolveTenantKeyFromLocation,
+  withTenantSearch,
+} from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 import type { Session } from "@supabase/supabase-js";
 import type { TenantStatus, TenantType } from "@/types/database";
@@ -571,7 +575,7 @@ export function TenantLandingPage({ tenantKey }: { tenantKey?: string }) {
                     </p>
                   </div>
                   <Link
-                    to={`/my-applications?tenant=${encodeURIComponent(key)}`}
+                    to={withTenantSearch("/my-applications", key)}
                     className="mt-4 inline-flex shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:mt-0"
                   >
                     <Button

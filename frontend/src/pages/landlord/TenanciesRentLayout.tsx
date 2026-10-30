@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
+import { tenantSearchSuffix } from "@/lib/tenant";
 
 const TABS = [
   { to: "/app/landlord/tenancies", label: "Tenancies", end: true },
@@ -11,9 +12,7 @@ const TABS = [
 export function TenanciesRentLayout() {
   const { activeMembership } = useAuth();
   const location = useLocation();
-  const tenantSearch = activeMembership?.tenant.slug
-    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
-    : "";
+  const tenantSearch = tenantSearchSuffix(activeMembership?.tenant.slug);
 
   // Detail pages keep the tab chrome for context switching.
   const showTabs =

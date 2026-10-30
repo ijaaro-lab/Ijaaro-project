@@ -14,6 +14,11 @@ import {
   tenantPortalAccessDenial,
   workspaceAppHomePath,
 } from "@/lib/roles";
+import {
+  readTenantSlugFromHost,
+  tenantSearchSuffix,
+  tenantWorkspaceUrl,
+} from "@/lib/tenant";
 import type { AppRole, Tenant, TenantMembership, TenantType } from "@/types/database";
 
 type WorkspacePreview = {
@@ -37,7 +42,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
-  const tenantSlug = params.get("tenant")?.trim().toLowerCase() || null;
+  const tenantSlug =
+    params.get("tenant")?.trim().toLowerCase() || readTenantSlugFromHost() || null;
   const isPlatformLogin = !tenantSlug;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -83,7 +89,7 @@ export function LoginPage() {
         (m) => m.tenant.slug === tenantSlug || m.tenant.subdomain === tenantSlug,
       );
       if (match) return workspaceAppHomePath(match);
-      return `/app?tenant=${encodeURIComponent(tenantSlug)}`;
+      return `/app${tenantSearchSuffix(tenantSlug)}`;
     }
 
     const first = source[0];
@@ -215,7 +221,7 @@ export function LoginPage() {
   const accent = brandingString(branding, "accent_color") || "#f5c400";
   const ctaColor = tenantSlug ? accent : "#f5c400";
   const ctaText = tenantSlug ? "#ffffff" : "#0b1f3a";
-  const homeHref = tenantSlug ? `/?tenant=${encodeURIComponent(tenantSlug)}` : "/";
+  const homeHref = tenantSlug ? tenantWorkspaceUrl(tenantSlug) : "/";
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8eef5] px-4 py-8 dark:bg-[#0a1524]">

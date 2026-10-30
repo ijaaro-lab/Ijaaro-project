@@ -8,12 +8,14 @@ import { friendlyAuthError } from "@/components/landing/LandingLoginCard";
 import { money } from "@/lib/format";
 import { buildApplySignupEmailRedirectTo } from "@/lib/signupEmailRedirect";
 import { supabase } from "@/lib/supabase";
+import { readTenantSlugFromHost, withTenantSearch } from "@/lib/tenant";
 import { validateUsernameInput } from "@/lib/username";
 import type { LandlordPublicListing } from "@/types/database";
 
 export function ApplyToRentPage() {
   const [params] = useSearchParams();
-  const tenantKey = params.get("tenant")?.trim().toLowerCase() || "";
+  const tenantKey =
+    params.get("tenant")?.trim().toLowerCase() || readTenantSlugFromHost() || "";
   const propertyId = params.get("property")?.trim() || "";
 
   const { session, loading: authLoading, signIn, signUp, user } = useAuth();
@@ -173,7 +175,7 @@ export function ApplyToRentPage() {
   if (!tenantKey) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-sm text-muted-foreground">
-        Open this page from a landlord workspace (
+        Open this page from a landlord workspace subdomain (or local{" "}
         <code className="text-foreground">?tenant=</code>).
       </div>
     );
@@ -182,7 +184,7 @@ export function ApplyToRentPage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-10 sm:px-6">
       <Link
-        to={`/?tenant=${encodeURIComponent(tenantKey)}`}
+        to={withTenantSearch("/", tenantKey)}
         className="text-sm text-brand-blue hover:underline"
       >
         ← Back to workspace
@@ -219,7 +221,7 @@ export function ApplyToRentPage() {
             {success}
           </div>
           <Link
-            to={`/my-applications?tenant=${encodeURIComponent(tenantKey)}`}
+            to={withTenantSearch("/my-applications", tenantKey)}
             className="text-sm text-brand-blue hover:underline"
           >
             View my applications →

@@ -21,6 +21,7 @@ import {
 import {
   readTenantSlugFromHost,
   readTenantSlugFromSearch,
+  tenantSearchSuffix,
   tenantWorkspacePath,
 } from "@/lib/tenant";
 import { brandingString } from "@/lib/uploadImage";
@@ -141,9 +142,7 @@ export function AppShell() {
   const tenantDisplay =
     brandingString(branding, "display_name") || activeMembership?.tenant.name || "";
 
-  const tenantSearch = activeMembership?.tenant.slug
-    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
-    : "";
+  const tenantSearch = tenantSearchSuffix(activeMembership?.tenant.slug);
 
   const [refreshing, setRefreshing] = useState(false);
 

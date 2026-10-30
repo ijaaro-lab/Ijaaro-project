@@ -3,7 +3,10 @@
  *
  * Tenant keys come only from the caller's verified memberships (and an optional
  * `?tenant=` hint that must match a membership). Never trust arbitrary URLs.
+ * Production login links use `https://slug.ijaaro.online/login` (no query param).
  */
+
+import { tenantWorkspaceUrl, usesTenantSearchParam } from "@/lib/tenant";
 
 export type MembershipForLoginRedirect = {
   status: string;
@@ -29,6 +32,9 @@ export function normalizeTenantLoginSlug(
 export function workspaceLoginPathForSlug(slug: string): string {
   const normalized = normalizeTenantLoginSlug(slug);
   if (!normalized) return "/login";
+  if (!usesTenantSearchParam()) {
+    return `${tenantWorkspaceUrl(normalized).replace(/\/$/, "")}/login`;
+  }
   return `/login?tenant=${encodeURIComponent(normalized)}`;
 }
 

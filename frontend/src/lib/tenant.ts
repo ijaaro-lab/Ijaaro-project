@@ -75,9 +75,53 @@ export function tenantBaseDomain(
   return null;
 }
 
-/** Relative workspace entry: `/?tenant=hankaal` */
+/**
+ * Local-only mode: carry tenant via `?tenant=`.
+ * Vercel / production always uses `slug.ijaaro.online` (never query params).
+ * Local `slug.localhost` also skips the query — the host already has the slug.
+ */
+export function usesTenantSearchParam(
+  hostname: string = typeof window !== "undefined" ? window.location.hostname : "",
+): boolean {
+  const host = hostname.trim().toLowerCase();
+  if (!host || !isLocalDevHost(host)) return false;
+  // Plain localhost / 127.0.0.1 → ?tenant= ; slug.localhost → host only.
+  return readTenantSlugFromHost(host) == null;
+}
+
+/** `?tenant=slug` suffix for in-app links — empty string on Vercel/subdomain mode. */
+export function tenantSearchSuffix(slug: string | null | undefined): string {
+  const key = (slug ?? "").trim().toLowerCase();
+  if (!key || !usesTenantSearchParam()) return "";
+  return `?tenant=${encodeURIComponent(key)}`;
+}
+
+/**
+ * Merge `tenant` into a path’s query — local query-param mode only.
+ * On production, returns the path unchanged (host / absolute subdomain carries context).
+ */
+export function withTenantSearch(
+  path: string,
+  slug: string | null | undefined,
+): string {
+  const key = (slug ?? "").trim().toLowerCase();
+  if (!key || !usesTenantSearchParam()) return path;
+
+  const hashIdx = path.indexOf("#");
+  const hash = hashIdx >= 0 ? path.slice(hashIdx) : "";
+  const withoutHash = hashIdx >= 0 ? path.slice(0, hashIdx) : path;
+  const qIdx = withoutHash.indexOf("?");
+  const base = qIdx >= 0 ? withoutHash.slice(0, qIdx) : withoutHash;
+  const params = new URLSearchParams(qIdx >= 0 ? withoutHash.slice(qIdx + 1) : "");
+  params.set("tenant", key);
+  return `${base}?${params.toString()}${hash}`;
+}
+
+/** Relative workspace entry — local: `/?tenant=hankaal`; prod subdomain mode: `/`. */
 export function tenantWorkspacePath(slug: string): string {
-  return `/?tenant=${encodeURIComponent(slug.trim().toLowerCase())}`;
+  const key = slug.trim().toLowerCase();
+  if (!usesTenantSearchParam()) return "/";
+  return `/?tenant=${encodeURIComponent(key)}`;
 }
 
 /**
@@ -193,6 +237,10 @@ export function resolveTenantKeyFromLocation(
   search: string = typeof window !== "undefined" ? window.location.search : "",
   hostname: string = typeof window !== "undefined" ? window.location.hostname : "",
 ): string | null {
+  // Production: host wins. Local: allow `?tenant=` first for apex localhost.
+  if (!usesTenantSearchParam(hostname)) {
+    return readTenantSlugFromHost(hostname) ?? readTenantSlugFromSearch(search);
+  }
   return readTenantSlugFromSearch(search) ?? readTenantSlugFromHost(hostname);
 }
 

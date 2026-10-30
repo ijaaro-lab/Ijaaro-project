@@ -3,8 +3,11 @@ import {
   inferTenantBaseFromHost,
   readTenantSlugFromHost,
   tenantBaseDomain,
+  tenantSearchSuffix,
   tenantSubdomainLabel,
   tenantWorkspaceUrl,
+  usesTenantSearchParam,
+  withTenantSearch,
 } from "./tenant";
 
 describe("inferTenantBaseFromHost", () => {
@@ -44,6 +47,7 @@ describe("readTenantSlugFromHost", () => {
 describe("tenantWorkspaceUrl / labels with live host", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("builds slug.ijaaro.online when the app is on the apex", () => {
@@ -78,5 +82,39 @@ describe("tenantWorkspaceUrl / labels with live host", () => {
 
     // Managed preview host cannot be inferred; production default still wins.
     expect(tenantWorkspaceUrl("mcc")).toMatch(/mcc\.ijaaro\.online$/);
+  });
+
+  it("does not append ?tenant= on production hosts", () => {
+    vi.stubGlobal("window", {
+      location: {
+        hostname: "ijaaro.online",
+        protocol: "https:",
+        port: "",
+        origin: "https://ijaaro.online",
+      },
+    });
+
+    expect(usesTenantSearchParam()).toBe(false);
+    expect(tenantSearchSuffix("mcc")).toBe("");
+    expect(withTenantSearch("/app/landlord", "mcc")).toBe("/app/landlord");
+  });
+
+  it("keeps ?tenant= on local apex", () => {
+    vi.stubEnv("PROD", false);
+    vi.stubEnv("VITE_TENANT_BASE_DOMAIN", "");
+    vi.stubGlobal("window", {
+      location: {
+        hostname: "localhost",
+        protocol: "http:",
+        port: "5173",
+        origin: "http://localhost:5173",
+      },
+    });
+
+    expect(usesTenantSearchParam()).toBe(true);
+    expect(tenantSearchSuffix("mcc")).toBe("?tenant=mcc");
+    expect(withTenantSearch("/app/landlord", "mcc")).toBe(
+      "/app/landlord?tenant=mcc",
+    );
   });
 });

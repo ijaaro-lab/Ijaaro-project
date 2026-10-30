@@ -1,15 +1,14 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { WorkspaceTabs } from "@/components/layout/WorkspaceTabs";
+import { tenantSearchSuffix } from "@/lib/tenant";
 import { KIND_LABEL, type UtilityKind } from "./shared";
 
 export function FinancePaymentsLayout({ kind }: { kind: UtilityKind }) {
   const { activeMembership } = useAuth();
   const location = useLocation();
   const base = `/app/${kind}`;
-  const tenantSearch = activeMembership?.tenant.slug
-    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
-    : "";
+  const tenantSearch = tenantSearchSuffix(activeMembership?.tenant.slug);
 
   const tabs = [
     { to: `${base}/bills`, label: "Bills" },

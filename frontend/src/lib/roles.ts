@@ -1,4 +1,5 @@
 import type { AppRole } from "@/types/database";
+import { tenantSearchSuffix } from "@/lib/tenant";
 
 export const PLATFORM_LOGIN_ROLES: AppRole[] = [
   "super_admin",
@@ -112,20 +113,20 @@ type WorkspaceNavMembership = {
   };
 };
 
-/** Role-aware home path inside a tenant workspace (keeps `?tenant=`). */
+/** Role-aware home path inside a tenant workspace (`?tenant=` only in local mode). */
 export function workspaceAppHomePath(membership: WorkspaceNavMembership): string {
   const slug = (membership.tenant.slug || membership.tenant.subdomain || "")
     .trim()
     .toLowerCase();
-  const q = slug ? `?tenant=${encodeURIComponent(slug)}` : "";
+  const suffix = tenantSearchSuffix(slug);
   const type = membership.tenant.tenant_type;
   const role = membership.role;
 
-  if (type === "water_company") return `/app/water${q}`;
-  if (type === "electricity_company") return `/app/electricity${q}`;
+  if (type === "water_company") return `/app/water${suffix}`;
+  if (type === "electricity_company") return `/app/electricity${suffix}`;
   if (type === "landlord") {
-    if (role === "renter") return `/app/renter${q}`;
-    return `/app/landlord${q}`;
+    if (role === "renter") return `/app/renter${suffix}`;
+    return `/app/landlord${suffix}`;
   }
-  return `/app${q}`;
+  return `/app${suffix}`;
 }

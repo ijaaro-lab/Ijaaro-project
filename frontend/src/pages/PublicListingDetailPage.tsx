@@ -21,6 +21,7 @@ import { supabase } from "@/lib/supabase";
 import { money, statusTone } from "@/lib/format";
 import { formatPropertyTypeLabel } from "@/lib/propertyPhotos";
 import { fetchPublicListingGallery } from "@/lib/publicListingPhotos";
+import { readTenantSlugFromHost, withTenantSearch } from "@/lib/tenant";
 import type { LandlordPublicListing } from "@/types/database";
 
 const MISSING = "Lama sheegin";
@@ -79,7 +80,8 @@ function DetailRow({ label, value, icon, wide }: DetailRowProps) {
 export function PublicListingDetailPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
-  const tenantKey = params.get("tenant")?.trim().toLowerCase() || "";
+  const tenantKey =
+    params.get("tenant")?.trim().toLowerCase() || readTenantSlugFromHost() || "";
 
   const [listing, setListing] = useState<LandlordPublicListing | null>(null);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -134,7 +136,7 @@ export function PublicListingDetailPage() {
 
   const backToHomes = (
     <Link
-      to={`/?tenant=${encodeURIComponent(tenantKey)}#available-homes`}
+      to={withTenantSearch("/#available-homes", tenantKey)}
       className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-brand-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -144,7 +146,7 @@ export function PublicListingDetailPage() {
 
   const backToWorkspace = (
     <Link
-      to={`/?tenant=${encodeURIComponent(tenantKey)}`}
+      to={withTenantSearch("/", tenantKey)}
       className="mt-4 inline-flex rounded-md text-sm text-brand-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       ← Back to workspace
@@ -154,8 +156,8 @@ export function PublicListingDetailPage() {
   if (!tenantKey) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-sm text-muted-foreground">
-        Missing workspace. Open the landlord site with{" "}
-        <code className="text-foreground">?tenant=&lt;slug&gt;</code>.
+        Missing workspace. Open the landlord site via its subdomain (or local{" "}
+        <code className="text-foreground">?tenant=&lt;slug&gt;</code>).
       </div>
     );
   }
@@ -311,7 +313,10 @@ export function PublicListingDetailPage() {
                     : "Rent on request"}
                 </p>
                 <Link
-                  to={`/apply?tenant=${encodeURIComponent(tenantKey)}&property=${encodeURIComponent(listing.id)}`}
+                  to={withTenantSearch(
+                    `/apply?property=${encodeURIComponent(listing.id)}`,
+                    tenantKey,
+                  )}
                   className="mt-5 block"
                 >
                   <Button type="button" className="h-11 w-full text-sm font-bold">

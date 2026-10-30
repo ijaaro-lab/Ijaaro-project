@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { formatPropertyTypeLabel } from "@/lib/propertyPhotos";
 import { fetchPublicListingCovers } from "@/lib/publicListingPhotos";
+import { withTenantSearch } from "@/lib/tenant";
 import type { LandlordPublicListingSummary } from "@/types/database";
 
 type Props = {
@@ -163,7 +164,7 @@ export function LandlordPublicListings({ tenantKey, accent = "#1fa85a" }: Props)
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
-                        to={`/listings/${p.id}?tenant=${encodeURIComponent(tenantKey)}`}
+                        to={withTenantSearch(`/listings/${p.id}`, tenantKey)}
                         className="inline-flex"
                       >
                         <Button type="button" variant="outline" size="sm">
@@ -171,7 +172,10 @@ export function LandlordPublicListings({ tenantKey, accent = "#1fa85a" }: Props)
                         </Button>
                       </Link>
                       <Link
-                        to={`/apply?tenant=${encodeURIComponent(tenantKey)}&property=${encodeURIComponent(p.id)}`}
+                        to={withTenantSearch(
+                          `/apply?property=${encodeURIComponent(p.id)}`,
+                          tenantKey,
+                        )}
                         className="inline-flex"
                       >
                         <Button

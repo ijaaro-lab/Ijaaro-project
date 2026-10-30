@@ -10,11 +10,13 @@ import { friendlyAuthError } from "@/components/landing/LandingLoginCard";
 import { resolveMyApplicationsRenterDestination } from "@/lib/myApplicationsNav";
 import { statusTone } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
+import { readTenantSlugFromHost, withTenantSearch } from "@/lib/tenant";
 import type { MyRentalApplicationRow } from "@/types/database";
 
 export function MyApplicationsPage() {
   const [params] = useSearchParams();
-  const tenantKey = params.get("tenant")?.trim().toLowerCase() || "";
+  const tenantKey =
+    params.get("tenant")?.trim().toLowerCase() || readTenantSlugFromHost() || "";
   const navigate = useNavigate();
   const {
     session,
@@ -40,7 +42,7 @@ export function MyApplicationsPage() {
   );
 
   const browseListingsHref = tenantKey
-    ? `/?tenant=${encodeURIComponent(tenantKey)}#available-homes`
+    ? withTenantSearch("/#available-homes", tenantKey)
     : "/";
 
   const load = async () => {
@@ -90,7 +92,7 @@ export function MyApplicationsPage() {
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
         {tenantKey ? (
           <Link
-            to={`/?tenant=${encodeURIComponent(tenantKey)}`}
+            to={withTenantSearch("/", tenantKey)}
             className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-brand-blue hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -248,7 +250,10 @@ export function MyApplicationsPage() {
                           <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
                             {r.status === "rejected" && tenantKey && (
                               <Link
-                                to={`/apply?tenant=${encodeURIComponent(tenantKey)}&property=${encodeURIComponent(r.property_id)}`}
+                                to={withTenantSearch(
+                                  `/apply?property=${encodeURIComponent(r.property_id)}`,
+                                  tenantKey,
+                                )}
                                 className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                               >
                                 <Button type="button" size="sm" variant="outline">

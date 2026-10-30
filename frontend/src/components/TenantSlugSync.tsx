@@ -1,13 +1,16 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
-import { resolveTenantKeyFromLocation } from "@/lib/tenant";
+import {
+  resolveTenantKeyFromLocation,
+  tenantWorkspaceUrl,
+  usesTenantSearchParam,
+} from "@/lib/tenant";
 
 /**
- * Keeps `?tenant=<slug>` in sync with the active membership.
- * - Incoming URL / host key selects the matching workspace.
- * - Navigating inside `/app/*` preserves the tenant query so deep links keep working.
- * Isolation still comes from RLS + membership — this only picks the workspace in view.
+ * Syncs active membership from host / `?tenant=`.
+ * Production: host slug only (`slug.ijaaro.online`); never appends `?tenant=`.
+ * Local: keeps `?tenant=` on `/app/*` for deep links.
  */
 export function TenantSlugSync() {
   const [params] = useSearchParams();
@@ -19,6 +22,33 @@ export function TenantSlugSync() {
   const slugFromUrl =
     params.get("tenant")?.trim().toLowerCase() ||
     resolveTenantKeyFromLocation(window.location.search, window.location.hostname);
+
+  // Production: upgrade legacy `/?tenant=slug` links to the real subdomain.
+  useEffect(() => {
+    if (usesTenantSearchParam()) return;
+    const fromQuery = params.get("tenant")?.trim().toLowerCase();
+    if (!fromQuery) return;
+    const target = tenantWorkspaceUrl(fromQuery);
+    const here = `${window.location.protocol}//${window.location.host}${location.pathname}`;
+    if (target.replace(/\/$/, "") === here.replace(/\/$/, "")) {
+      // Already on the right host — strip the query param.
+      const next = new URLSearchParams(params);
+      next.delete("tenant");
+      const search = next.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: search ? `?${search}` : "",
+          hash: location.hash,
+        },
+        { replace: true },
+      );
+      return;
+    }
+    window.location.replace(
+      `${target}${location.pathname === "/" ? "" : location.pathname}${location.hash || ""}`,
+    );
+  }, [params, location.pathname, location.hash, navigate]);
 
   // Select membership when URL/host carries a tenant key.
   useEffect(() => {
@@ -32,8 +62,9 @@ export function TenantSlugSync() {
     }
   }, [slugFromUrl, memberships, activeMembership?.id, setActiveMembershipId]);
 
-  // Keep `?tenant=` on app routes so NavLinks / refresh / shareable URLs stay correct.
+  // Local only: keep `?tenant=` on app routes.
   useEffect(() => {
+    if (!usesTenantSearchParam()) return;
     if (isSuperAdmin) return;
     if (!location.pathname.startsWith("/app")) return;
     if (!activeMembership?.tenant.slug) return;

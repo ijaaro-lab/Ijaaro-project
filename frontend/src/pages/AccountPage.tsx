@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { validatePasswordPair } from "@/lib/passwordForm";
 import { supabase } from "@/lib/supabase";
+import { tenantSearchSuffix } from "@/lib/tenant";
 import { brandingString, uploadPublicImage } from "@/lib/uploadImage";
 import { cn } from "@/lib/utils";
 
@@ -400,7 +401,7 @@ export function AccountPage() {
 
             <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
               <Link
-                to={`/app/branding?tenant=${encodeURIComponent(activeMembership?.tenant.slug ?? "")}`}
+                to={`/app/branding${tenantSearchSuffix(activeMembership?.tenant.slug)}`}
                 className="w-full sm:w-auto"
               >
                 <Button type="button" className="w-full sm:w-auto">

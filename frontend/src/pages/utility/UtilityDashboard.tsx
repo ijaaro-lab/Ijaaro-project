@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { brandingString } from "@/lib/uploadImage";
 import { supabase } from "@/lib/supabase";
 import { money, paymentStatusLabel, statusTone } from "@/lib/format";
+import { tenantSearchSuffix } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 import type {
   ExtraChargesConfig,
@@ -60,9 +61,7 @@ export function UtilityDashboard({ kind }: { kind: UtilityKind }) {
   const role = activeMembership?.role;
   const isStaff = role === "utility_admin" || role === "utility_staff";
   const isCustomer = role === "utility_customer";
-  const tenantSearch = activeMembership?.tenant.slug
-    ? `?tenant=${encodeURIComponent(activeMembership.tenant.slug)}`
-    : "";
+  const tenantSearch = tenantSearchSuffix(activeMembership?.tenant.slug);
   const accent = kind === "water" ? "water" : "power";
   const chartColor = kind === "water" ? "var(--color-brand-water)" : "var(--color-brand-power)";
   const hoverBorder =
