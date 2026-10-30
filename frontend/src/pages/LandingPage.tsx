@@ -15,10 +15,17 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { tenantBaseDomain, tenantSubdomainLabel } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 
 /** Get Started → public multi-step workspace onboarding. */
 const CREATE_WORKSPACE_PATH = "/create-workspace";
+
+function workspaceEntryExample(slug = "your-company"): string {
+  return tenantBaseDomain()
+    ? tenantSubdomainLabel(slug)
+    : `/?tenant=${slug}`;
+}
 
 const MARQUEE_LINE =
   "One connected workspace for rental property, water, and electricity operations.";
@@ -296,7 +303,9 @@ export function LandingPage() {
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
                 Self-serve onboarding chooses tenant type, branding, and landing template — then
-                opens <code className="text-foreground">/?tenant=&lt;slug&gt;</code>.
+                opens{" "}
+                <code className="text-foreground">{workspaceEntryExample("slug")}</code>.
+                Platform marketing stays on the apex domain.
               </p>
             </div>
             <HeroPreview />
@@ -409,10 +418,10 @@ export function LandingPage() {
                 Users only reach dashboards and actions permitted by their role.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
-                Each landlord, water company, and electricity company gets its own slug-based
-                workspace entry (for example{" "}
+                Each landlord, water company, and electricity company gets its own subdomain
+                workspace (for example{" "}
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  ?tenant=your-company
+                  {workspaceEntryExample()}
                 </code>
                 ). Data never crosses tenant boundaries.
               </p>
@@ -473,8 +482,8 @@ export function LandingPage() {
             </h2>
             <p className="mt-4 text-base text-[#D7E4F2]">
               Create your workspace: choose type → admin account → subdomain → landing
-              branding. You get a unique entry at{" "}
-              <code className="text-white">/?tenant=&lt;slug&gt;</code>.
+              branding. You get a unique portal at{" "}
+              <code className="text-white">{workspaceEntryExample("slug")}</code>.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link to={getStartedTo}>

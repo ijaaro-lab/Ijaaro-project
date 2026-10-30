@@ -8,10 +8,64 @@ export function slugifyTenantName(name: string): string {
     .slice(0, 48);
 }
 
-/** Optional production base domain, e.g. `ijaaro.app` → `slug.ijaaro.app`. */
-export function tenantBaseDomain(): string | null {
+/** Subdomains that are never tenant workspaces. */
+const RESERVED_SUBDOMAINS = new Set([
+  "www",
+  "app",
+  "api",
+  "cdn",
+  "static",
+  "mail",
+  "ftp",
+  "staging",
+  "dev",
+  "status",
+  "docs",
+  "admin",
+]);
+
+function isLocalDevHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".localhost")
+  );
+}
+
+/** Preview / platform hosts must not be treated as SaaS base domains. */
+function isManagedPlatformHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  return (
+    host.endsWith(".vercel.app") ||
+    host.endsWith(".vercel.sh") ||
+    host.endsWith(".now.sh")
+  );
+}
+
+/**
+ * Infer production apex from the current host when env is unset.
+ * `hodan.ijaaro.online` → `ijaaro.online`; `ijaaro.online` → `ijaaro.online`.
+ */
+export function inferTenantBaseFromHost(hostname: string): string | null {
+  const host = hostname.trim().toLowerCase();
+  if (!host || isLocalDevHost(host) || isManagedPlatformHost(host)) return null;
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length < 2) return null;
+  if (parts.length === 2) return host;
+  return parts.slice(1).join(".");
+}
+
+/**
+ * Production SaaS base domain, e.g. `ijaaro.online` → `slug.ijaaro.online`.
+ * Prefers `VITE_TENANT_BASE_DOMAIN`, then infers from the live hostname.
+ */
+export function tenantBaseDomain(
+  hostname: string = typeof window !== "undefined" ? window.location.hostname : "",
+): string | null {
   const raw = (import.meta.env.VITE_TENANT_BASE_DOMAIN as string | undefined)?.trim();
-  return raw || null;
+  if (raw) return raw;
+  return hostname ? inferTenantBaseFromHost(hostname) : null;
 }
 
 /** Relative workspace entry: `/?tenant=hankaal` */
@@ -22,7 +76,7 @@ export function tenantWorkspacePath(slug: string): string {
 /**
  * Absolute platform marketing/home URL (no tenant subdomain / ?tenant=).
  * Local subdomain → `http://localhost:5173/`
- * Production → `https://ijaaro.app/` (or current apex origin)
+ * Production → `https://ijaaro.online/` (or current apex origin)
  */
 export function platformHomeUrl(
   origin: string = typeof window !== "undefined" ? window.location.origin : "",
@@ -52,21 +106,12 @@ export function platformHomeUrl(
   }
 }
 
-function isLocalDevHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase();
-  return (
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host.endsWith(".localhost")
-  );
-}
-
 /**
  * Absolute workspace URL for sharing after provision.
  *
  * Local → `http://hankaal.localhost:5173/` (subdomain host)
  * Fallback → `http://localhost:5173/?tenant=hankaal`
- * Production with `VITE_TENANT_BASE_DOMAIN` → `https://hankaal.ijaaro.app`
+ * Production → `https://hankaal.ijaaro.online`
  */
 export function tenantWorkspaceUrl(
   slugOrSubdomain: string,
@@ -75,7 +120,7 @@ export function tenantWorkspaceUrl(
   const key = slugOrSubdomain.trim().toLowerCase();
   const base = tenantBaseDomain();
 
-  // Real DNS subdomain when a production base domain is configured
+  // Real DNS subdomain when a production base domain is known
   if (base) {
     const protocol =
       typeof window !== "undefined" ? window.location.protocol : "https:";
@@ -96,7 +141,7 @@ export function tenantWorkspaceUrl(
 /**
  * Human label for the tenant host key.
  * Local: `hankaal.localhost:5173`
- * Prod: `hankaal.ijaaro.app`
+ * Prod: `hankaal.ijaaro.online`
  */
 export function tenantSubdomainLabel(subdomain: string): string {
   const key = subdomain.trim().toLowerCase();
@@ -114,18 +159,19 @@ export function readTenantSlugFromHost(
   hostname: string = typeof window !== "undefined" ? window.location.hostname : "",
 ): string | null {
   const host = hostname.trim().toLowerCase();
-  if (!host) return null;
+  if (!host || isManagedPlatformHost(host)) return null;
 
-  const base = tenantBaseDomain()?.toLowerCase();
+  const base = tenantBaseDomain(host)?.toLowerCase();
   if (base && (host === base || host.endsWith(`.${base}`))) {
+    if (host === base) return null;
     const sub = host.slice(0, -(base.length + 1));
-    if (sub && !sub.includes(".")) return sub;
+    if (sub && !sub.includes(".") && !RESERVED_SUBDOMAINS.has(sub)) return sub;
     return null;
   }
 
   if (host.endsWith(".localhost")) {
     const sub = host.slice(0, -".localhost".length);
-    if (sub && !sub.includes(".")) return sub;
+    if (sub && !sub.includes(".") && !RESERVED_SUBDOMAINS.has(sub)) return sub;
   }
 
   return null;
