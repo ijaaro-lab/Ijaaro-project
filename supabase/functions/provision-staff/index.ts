@@ -4,14 +4,16 @@ import {
   compensationFailureResponse,
   createRequestId,
   emailExactImatchPattern,
-  isEmailDeliveryReady,
   logProvisionEvent,
   mapInviteFailureForLandlord,
   runCompensationDelete,
   sanitizeLandlordResponse,
   validateProvisionStaffInput,
 } from "./logic.ts";
-import { sendWelcomeEmail } from "../_shared/welcomeEmail.ts";
+import {
+  isResendConfigured,
+  sendInviteEmail,
+} from "../_shared/welcomeEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,8 +26,8 @@ const corsHeaders = {
  *
  * - JWT required; caller must be active landlord_admin on an operable landlord tenant.
  * - Membership role is hard-coded to `landlord_staff` (client role ignored / rejected).
- * - Uses Auth inviteUserByEmail (no landlord-chosen password).
- * - Fail-closed when PROVISION_STAFF_EMAIL_DELIVERY_READY is not "true".
+ * - Creates invite via Auth generateLink (no Supabase SMTP) and emails the link with Resend.
+ * - Fail-closed when RESEND_API_KEY is missing or Resend send fails.
  * - Never returns activation URLs, tokens, or passwords to the landlord.
  */
 Deno.serve(async (req) => {
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
       return json({ error: "method not allowed", code: "method_not_allowed" }, 405);
     }
 
-    if (!isEmailDeliveryReady(Deno.env.get("PROVISION_STAFF_EMAIL_DELIVERY_READY"))) {
+    if (!isResendConfigured()) {
       return json(
         {
           error:
@@ -187,15 +189,17 @@ Deno.serve(async (req) => {
     }
 
     const redirectTo = `${siteUrl}/set-password`;
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
+    const { data: linkData, error: inviteErr } = await admin.auth.admin.generateLink({
+      type: "invite",
       email,
-      {
+      options: {
         redirectTo,
         data: { full_name: fullName },
       },
-    );
+    });
 
-    if (inviteErr || !invited?.user?.id) {
+    const actionLink = linkData?.properties?.action_link?.trim() ?? "";
+    if (inviteErr || !linkData?.user?.id || !actionLink) {
       const mapped = mapInviteFailureForLandlord(inviteErr?.message);
       logProvisionEvent({
         event: "provision_staff.invite_failed",
@@ -206,12 +210,43 @@ Deno.serve(async (req) => {
       return json(mapped.body, mapped.status);
     }
 
-    createdUserId = invited.user.id;
+    createdUserId = linkData.user.id;
 
     const deleteCreatedUser = async (userId: string) => {
       const { error } = await admin!.auth.admin.deleteUser(userId);
       return { error };
     };
+
+    const mail = await sendInviteEmail({
+      to: email,
+      fullName,
+      actionLink,
+      workspaceLabel: "your landlord workspace",
+    });
+    if (!mail.ok) {
+      const cleanup = await runCompensationDelete(deleteCreatedUser, createdUserId, {
+        requestId,
+        stage: "invite_email_failed",
+      });
+      createdUserId = null;
+      if (!cleanup.ok) {
+        return json(compensationFailureResponse(requestId), 500);
+      }
+      logProvisionEvent({
+        event: "provision_staff.invite_email_failed",
+        request_id: requestId,
+        category: "delivery",
+        code: "invite_failed",
+      });
+      return json(
+        {
+          error: "Secure activation email could not be sent. Provisioning blocked.",
+          code: "invite_failed",
+          request_id: requestId,
+        },
+        503,
+      );
+    }
 
     const profilePayload: Record<string, unknown> = {
       id: createdUserId,
@@ -294,21 +329,15 @@ Deno.serve(async (req) => {
 
     createdUserId = null;
 
-    void sendWelcomeEmail({
-      to: email,
-      fullName,
-      workspaceUrl: siteUrl || null,
-    });
-
     const safe = sanitizeLandlordResponse({
       ok: true,
       user_id: (membershipRow as { user_id: string }).user_id,
       membership_status: (membershipRow as { status: string }).status,
       role: "landlord_staff",
       request_id: requestId,
-      invite_accepted_by_auth: true,
+      invite_email_sent: true,
       message:
-        "Staff provisioned. An activation email was requested via Supabase Auth; confirm they received it before relying on login.",
+        "Staff provisioned. An activation email was sent via Resend; confirm they received it before relying on login.",
     });
 
     return json(safe, 200);
