@@ -642,7 +642,7 @@ export function StaffMembersPage() {
                 Invite new staff by email
               </h3>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Creates a new Auth account and sends an activation email when delivery is enabled for
+                Creates a new Auth account and sends a Resend activation email when delivery is enabled for
                 this environment. Does not create an account if the email already exists — use link
                 instead.
               </p>
